@@ -36,3 +36,37 @@ export function computeDistance(a, b) {
   const dz = a.z - b.z;
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
+
+/**
+ * Compute a dynamic hit threshold from real-time shoulder width.
+ * Uses 80% of shoulder-to-shoulder 3D distance as the proximity zone,
+ * clamped to a safe [0.15, 0.50] range.
+ *
+ * @param {Array} landmarks — full 33-landmark array
+ * @returns {number} dynamic threshold in meters
+ */
+export function computeDynamicThreshold(landmarks) {
+  const LEFT_SHOULDER = 11;
+  const RIGHT_SHOULDER = 12;
+
+  const ls = landmarks[LEFT_SHOULDER];
+  const rs = landmarks[RIGHT_SHOULDER];
+
+  if (!ls || !rs) return 0.30; // Fallback if shoulders are occluded
+
+  const shoulderWidth = computeDistance(ls, rs);
+  const raw = shoulderWidth * 0.8;
+  return clamp(raw, 0.15, 0.50);
+}
+
+export function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+export function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+export function smoothValue(current, target, factor) {
+  return current * (1 - factor) + target * factor;
+}

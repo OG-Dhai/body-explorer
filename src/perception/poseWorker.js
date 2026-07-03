@@ -23,7 +23,8 @@ let landmarker = null;
  * Called once on 'init' message from main thread.
  */
 async function initialize() {
-  const vision = await FilesetResolver.forVisionTasks('/wasm/mediapipe/');
+  const basePath = '/wasm/mediapipe';
+  const vision = await FilesetResolver.forVisionTasks(basePath);
 
   landmarker = await PoseLandmarker.createFromOptions(vision, {
     baseOptions: {

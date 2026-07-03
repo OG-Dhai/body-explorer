@@ -5,14 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Body Explorer 3D</title>
     <meta name="description" content="Privacy-first 3D spatial-tracking educational application. 100% client-side." />
+    <meta property="og:title" content="Body Explorer 3D" />
+    <meta property="og:description" content="Privacy-first 3D spatial-tracking educational application. 100% client-side." />
+    <meta property="og:type" content="website" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div id="app">
-      <h1>Body Explorer 3D</h1>
-      <p id="status">Click Start to begin.</p>
-      <button id="btn-start" type="button">Start</button>
-      <pre id="output"></pre>
+      <!-- Splash Screen Container -->
+      <div id="splash-screen" class="splash-container">
+        <h1 class="splash-title">Body Explorer 3D</h1>
+        <p class="splash-subtitle">Interactive 3D Spatial-Tracking Educational Experience</p>
+        
+        <div class="privacy-card">
+          <h3>Local Processing Privacy Notice</h3>
+          <p>
+            This application uses <strong>local computer vision</strong> to track your pose. 
+            All processing is performed directly in your web browser. 
+            No camera footage, images, or skeletal tracking data are ever transmitted to any remote server or third party.
+          </p>
+        </div>
+
+        <p id="status">Click Start to begin.</p>
+        <button id="btn-start" type="button">Start</button>
+      </div>
+
+      <!-- Game Container -->
+      <div id="game-container" class="game-container hidden">
+        <div id="video-container"></div>
+        <div id="canvas-container"></div>
+        <div id="hud-overlay"></div>
+        <button id="lang-toggle" class="lang-toggle" aria-label="Toggle Language">EN | 🇩🇪</button>
+      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

@@ -1,37 +1,50 @@
-/**
- * Body Explorer 3D — Entry Point
- *
- * Orchestrates the Sprint 1 pipeline boot sequence:
- *   Camera → PoseService (Worker) → Console Output
- *
- * The Start button provides the user gesture required for
- * camera permissions and AudioContext resume.
- */
-
 import { CameraService } from './input/cameraService.js';
 import { PoseService } from './perception/poseService.js';
-import { playClick, playSuccess, dispose as disposeAudio } from './audio/audioEngine.js';
+import { playClick, playSuccess, playError, speak, dispose as disposeAudio } from './audio/audioEngine.js';
+import { SceneManager } from './scene/sceneManager.js';
+import { GameEngine } from './engine/gameEngine.js';
+import { HUDOverlay } from './scene/hudOverlay.js';
+import { EMAFilter } from './math/spatialMath.js';
+import eventBus from './core/eventBus.js';
+import { i18n } from './core/i18n.js';
 
 const statusEl = document.getElementById('status');
 const btnStart = document.getElementById('btn-start');
-const outputEl = document.getElementById('output');
+const splashScreen = document.getElementById('splash-screen');
+const gameContainer = document.getElementById('game-container');
+const videoContainer = document.getElementById('video-container');
+const canvasContainer = document.getElementById('canvas-container');
+const hudContainer = document.getElementById('hud-overlay');
+const langToggle = document.getElementById('lang-toggle');
 
 const camera = new CameraService();
 const pose = new PoseService();
 
-/** @type {number} */
-let frameCount = 0;
+let sceneManager = null;
+let gameEngine = null;
+let hudOverlay = null;
+
+// Initialize 99 EMA filters (33 joints * 3 axes)
+const filters = Array.from({ length: 33 }, () => ({
+  x: new EMAFilter(0.6),
+  y: new EMAFilter(0.6),
+  z: new EMAFilter(0.6)
+}));
+
+function resetFilters() {
+  for (const f of filters) {
+    f.x.reset();
+    f.y.reset();
+    f.z.reset();
+  }
+}
+
+/** @type {Array|null} */
+let latestLandmarks = null;
+let animationFrameId = null;
 
 function setStatus(text) {
   statusEl.textContent = text;
-}
-
-function logOutput(text) {
-  outputEl.textContent = text + '\n' + outputEl.textContent;
-  // Keep the log buffer bounded
-  if (outputEl.textContent.length > 4000) {
-    outputEl.textContent = outputEl.textContent.slice(0, 4000);
-  }
 }
 
 // ── Pipeline Wiring ──
@@ -41,20 +54,67 @@ camera.onFrame(({ bitmap, timestamp }) => {
 });
 
 pose.onResult((worldLandmarks) => {
-  frameCount++;
-  if (worldLandmarks.length > 0) {
-    const lm = worldLandmarks[0]; // First detected pose
-    const summary = `#${frameCount} | ${lm.length} joints | `
-      + `nose=(${lm[0].x.toFixed(3)}, ${lm[0].y.toFixed(3)}, ${lm[0].z.toFixed(3)})`;
-    logOutput(summary);
+  if (worldLandmarks && worldLandmarks.length > 0) {
+    const lm = worldLandmarks[0];
+    if (lm && lm.length >= 33) {
+      latestLandmarks = lm.map((pt, idx) => ({
+        x: filters[idx].x.update(pt.x),
+        y: filters[idx].y.update(pt.y),
+        z: filters[idx].z.update(pt.z)
+      }));
+      if (gameEngine) {
+        gameEngine.update(latestLandmarks);
+      }
+    } else {
+      latestLandmarks = null;
+      resetFilters();
+      if (gameEngine) {
+        gameEngine.update(null);
+      }
+    }
   } else {
-    logOutput(`#${frameCount} | No pose detected`);
+    latestLandmarks = null;
+    resetFilters();
+    if (gameEngine) {
+      gameEngine.update(null);
+    }
   }
 });
 
 pose.onError((msg) => {
-  logOutput(`[ERROR] ${msg}`);
+  console.error(`[PoseService Error] ${msg}`);
 });
+
+// ── Render Loop ──
+
+function renderLoop() {
+  animationFrameId = requestAnimationFrame(renderLoop);
+
+  if (gameEngine && sceneManager) {
+    const distance = gameEngine._currentDistance;
+    const threshold = gameEngine._dynamicThreshold;
+    sceneManager.update(latestLandmarks, distance, threshold);
+  }
+}
+
+// ── Event Bus Wiring ──
+function setupEventBus() {
+  eventBus.on('game:newQuestion', async ({ question }) => {
+    // Play educational question via TTS
+    const text = i18n.t(question.eduKey);
+    const voice = i18n.t('tts.voice');
+    speak(text, voice).catch(err => console.error('TTS error:', err));
+  });
+
+  eventBus.on('game:hit', () => {
+    playSuccess();
+  });
+
+  eventBus.on('ui:restartClick', () => {
+    playClick();
+    gameEngine.start();
+  });
+}
 
 // ── Boot Sequence ──
 
@@ -68,6 +128,37 @@ async function startPipeline() {
     await camera.start();
     setStatus('Pipeline active — tracking pose.');
     playSuccess();
+
+    // Instantiate game and rendering layers
+    sceneManager = new SceneManager(canvasContainer);
+    hudOverlay = new HUDOverlay(hudContainer);
+    gameEngine = new GameEngine();
+
+    setupEventBus();
+
+    // Append the video feed to the background
+    const videoElement = camera.videoElement;
+    if (videoElement) {
+      videoContainer.innerHTML = '';
+      videoContainer.appendChild(videoElement);
+    }
+
+    // Language Toggle
+    if (langToggle) {
+      langToggle.addEventListener('click', () => {
+        const newLang = i18n.getLocale() === 'en' ? 'de' : 'en';
+        i18n.setLocale(newLang);
+        langToggle.textContent = newLang === 'en' ? 'EN | 🇩🇪' : '🇬🇧 | DE';
+      });
+    }
+
+    // Transition splash screen
+    splashScreen.classList.add('fade-out');
+    gameContainer.classList.remove('hidden');
+
+    // Start game and render loop
+    gameEngine.start();
+    renderLoop();
   } catch (err) {
     setStatus(`Error: ${err.message}`);
     btnStart.disabled = false;
@@ -82,7 +173,16 @@ btnStart.addEventListener('click', () => {
 
 // ── Cleanup on page unload ──
 window.addEventListener('beforeunload', () => {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+  }
   camera.stop();
   pose.destroy();
   disposeAudio();
+  if (sceneManager) {
+    sceneManager.dispose();
+  }
+  if (hudOverlay) {
+    hudOverlay.dispose();
+  }
 });

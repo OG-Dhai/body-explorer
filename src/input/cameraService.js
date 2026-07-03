@@ -34,6 +34,11 @@ export class CameraService {
     this._supportsRVFC = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
   }
 
+  /** @returns {HTMLVideoElement|null} */
+  get videoElement() {
+    return this._video;
+  }
+
   /**
    * Register a callback that receives each new video frame as an ImageBitmap.
    * @param {(frame: FrameData) => void} cb
