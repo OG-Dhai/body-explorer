@@ -1,5 +1,5 @@
 /**
- * Layer 2 — Perception: Pose Worker
+ * Layer 2: Perception: Pose Worker
  *
  * Runs MediaPipe PoseLandmarker entirely off-main-thread.
  * Receives ImageBitmap via transferable, returns worldLandmarks.
@@ -17,6 +17,13 @@ import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
 
 /** @type {PoseLandmarker|null} */
 let landmarker = null;
+
+// Suppress MediaPipe's per-frame NORM_RECT warnings to avoid IPC spam tanking FPS
+const originalWarn = console.warn;
+console.warn = function(...args) {
+  if (args[0] && typeof args[0] === 'string' && args[0].includes('NORM_RECT')) return;
+  originalWarn.apply(console, args);
+};
 
 /**
  * Initialize the PoseLandmarker with locally served WASM + model.
@@ -43,7 +50,7 @@ async function initialize() {
  * CRITICAL: bitmap.close() is called after detection to prevent GPU/CPU memory leaks.
  *
  * @param {ImageBitmap} bitmap
- * @param {number} timestamp — milliseconds
+ * @param {number} timestamp: milliseconds
  */
 function processFrame(bitmap, timestamp) {
   if (!landmarker) {
@@ -62,7 +69,6 @@ function processFrame(bitmap, timestamp) {
   } catch (err) {
     self.postMessage({ type: 'error', message: err.message });
   } finally {
-    // Always release the bitmap, even on error
     bitmap.close();
   }
 }

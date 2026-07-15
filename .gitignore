@@ -12,11 +12,16 @@ dist
 dist-ssr
 *.local
 
-# Generated WASM files (regenerated via postinstall script)
+# Generated MediaPipe WASM staging output
 public/wasm/
 
 # Large model files (manually provisioned)
 public/models/
+piper_models/
+.piper-tmp/
+
+# Raw audio source downloads (processed outputs are in public/audio/)
+audio_downloads/
 
 # Agent framework
 .agents/

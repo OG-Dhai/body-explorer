@@ -46,15 +46,6 @@ class EventBus {
     return this.on(event, wrapped);
   }
 
-  removeAll(event) {
-    if (event) {
-      this._listeners.delete(event);
-    } else {
-      this._listeners.clear();
-    }
-    return this;
-  }
 }
 
-// Export singleton
 export default new EventBus();

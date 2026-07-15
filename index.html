@@ -3,41 +3,343 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Body Explorer 3D</title>
-    <meta name="description" content="Privacy-first 3D spatial-tracking educational application. 100% client-side." />
-    <meta property="og:title" content="Body Explorer 3D" />
-    <meta property="og:description" content="Privacy-first 3D spatial-tracking educational application. 100% client-side." />
+    <title data-i18n="ui.document_title">Body Explorer</title>
+    <meta name="description" content="Privacy-first spatial-tracking educational application. 100% client-side." />
+    <meta property="og:title" content="Body Explorer" />
+    <meta property="og:description" content="Privacy-first spatial-tracking educational application. 100% client-side." />
     <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#2C7A4B" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <div id="app">
-      <!-- Splash Screen Container -->
-      <div id="splash-screen" class="splash-container">
-        <h1 class="splash-title">Body Explorer 3D</h1>
-        <p class="splash-subtitle">Interactive 3D Spatial-Tracking Educational Experience</p>
-        
-        <div class="privacy-card">
-          <h3>Local Processing Privacy Notice</h3>
-          <p>
-            This application uses <strong>local computer vision</strong> to track your pose. 
-            All processing is performed directly in your web browser. 
-            No camera footage, images, or skeletal tracking data are ever transmitted to any remote server or third party.
-          </p>
-        </div>
-
-        <p id="status">Click Start to begin.</p>
-        <button id="btn-start" type="button">Start</button>
+    <noscript>
+      <div class="noscript-alert" role="alert">
+        Body Explorer needs JavaScript to run the camera, pose tracking, and game controls. Please enable JavaScript and reload the page.
       </div>
+    </noscript>
+
+    <main id="app" role="main" aria-label="Body Explorer" data-i18n-aria-label="ui.document_title">
+      <svg class="icon-sprite" width="0" height="0" aria-hidden="true" focusable="false">
+        <defs>
+          <symbol id="icon-shield" viewBox="0 0 24 24">
+            <path d="M12 2.5 20 5.5v5.7c0 4.9-3.2 8.4-8 10.3-4.8-1.9-8-5.4-8-10.3V5.5z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            <path d="m8.3 12.1 2.3 2.3 5.2-5.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-help" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" />
+            <path d="M9.4 9a2.8 2.8 0 1 1 4.2 2.4c-1 .6-1.6 1-1.6 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <circle cx="12" cy="17.2" r="1" fill="currentColor" />
+          </symbol>
+          <symbol id="icon-sparkle" viewBox="0 0 24 24">
+            <path d="m12 2 2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+            <circle cx="19" cy="5" r="1.5" fill="var(--icon-accent)" stroke="currentColor" stroke-width="1" />
+          </symbol>
+          <symbol id="icon-gamepad" viewBox="0 0 24 24">
+            <path d="M7 7.5h10a4 4 0 0 1 3.8 5.2l-1.4 4.2a2.5 2.5 0 0 1-4.2 1l-1.3-1.4h-3.8l-1.3 1.4a2.5 2.5 0 0 1-4.2-1l-1.4-4.2A4 4 0 0 1 7 7.5Z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            <path d="M7 12h4M9 10v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            <circle cx="16" cy="11" r="1" fill="currentColor" /><circle cx="18" cy="13" r="1" fill="currentColor" />
+          </symbol>
+
+          <symbol id="icon-trophy" viewBox="0 0 24 24">
+            <path d="M7 4h10v4.2c0 3.2-2 5.8-5 5.8s-5-2.6-5-5.8z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            <path d="M7 6H4v2.2c0 2 1.4 3.3 3.3 3.3M17 6h3v2.2c0 2-1.4 3.3-3.3 3.3M12 14v4M8.5 21h7M9 18h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-progress" viewBox="0 0 24 24">
+            <path d="M5 17.5 9.2 13l3.4 2.6L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="5" cy="17.5" r="2" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.5" /><circle cx="9.2" cy="13" r="2" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.5" /><circle cx="19" cy="7" r="2" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.5" />
+          </symbol>
+          <symbol id="icon-star" viewBox="0 0 24 24">
+            <path d="m12 2.8 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2-4.5-4.4 6.3-.9z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-bolt" viewBox="0 0 24 24">
+            <path d="m13.5 2.5-8 11h5.6l-.6 8 8-11h-5.6z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-clock" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" />
+            <path d="M12 7v5l3.4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-medal" viewBox="0 0 24 24">
+            <path d="M7 2.5h4l1 6-4 2zM17 2.5h-4l-1 6 4 2z" fill="var(--icon-accent)" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+            <circle cx="12" cy="14" r="6.5" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" />
+            <path d="m12 10.7 1 2 2.2.3-1.6 1.6.4 2.2-2-1-2 1 .4-2.2L8.8 13l2.2-.3z" fill="var(--icon-accent)" stroke="currentColor" stroke-width="1" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-chevron" viewBox="0 0 24 24">
+            <path d="m5 8.5 7 7 7-7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-restart" viewBox="0 0 24 24">
+            <path d="M5.2 8.5A8 8 0 1 1 5 15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+            <path d="M4.8 3.8v5.1h5.1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-speaker-on" viewBox="0 0 24 24">
+            <path d="M4 9.2h4l5-4v13.6l-5-4H4z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            <path d="M16 8.3a5.3 5.3 0 0 1 0 7.4M18.6 5.8a8.7 8.7 0 0 1 0 12.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </symbol>
+          <symbol id="icon-speaker-off" viewBox="0 0 24 24">
+            <path d="M4 9.2h4l5-4v13.6l-5-4H4z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            <path d="m16.2 9.2 4.6 5.6m0-5.6-4.6 5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </symbol>
+          <symbol id="icon-exit" viewBox="0 0 24 24">
+            <path d="M5 3.5h9v17H5z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            <path d="M10 12h10m-3-3 3 3-3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="10.5" cy="12" r=".8" fill="currentColor" />
+          </symbol>
+          <symbol id="icon-check" viewBox="0 0 24 24">
+            <path d="m4.5 12.5 4.8 4.8L19.8 6.8" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-close" viewBox="0 0 24 24">
+            <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+          </symbol>
+          <symbol id="icon-target" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" fill="var(--icon-fill)" stroke="currentColor" stroke-width="2" />
+            <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+          </symbol>
+          <symbol id="icon-thumbs-up" viewBox="0 0 24 24">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11a3 3 0 0 0 3-3V11a2 2 0 0 0-2-2zM3 11h4v11H3z" fill="var(--icon-fill)" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+          </symbol>
+          <symbol id="icon-language-globe" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" fill="var(--icon-fill)" stroke="currentColor" stroke-width="2" />
+            <path d="M12 3v18M3 12h18M12 3a9 9 0 0 1 0 18M12 3a9 9 0 0 0 0 18" fill="none" stroke="currentColor" stroke-width="1.8" />
+          </symbol>
+          <symbol id="icon-lock" viewBox="0 0 24 24">
+            <rect x="5" y="11" width="14" height="10" rx="2" fill="var(--icon-fill)" stroke="currentColor" stroke-width="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2" />
+          </symbol>
+
+        </defs>
+      </svg>
+
+      <!-- Splash Screen Container -->
+      <section id="splash-screen" class="view splash-container active" role="region" aria-labelledby="splash-title" aria-describedby="splash-subtitle status">
+        <div class="splash-content">
+          <div class="game-title-wrapper">
+            <h1 id="splash-title" class="game-title">
+              <span class="title-word" data-i18n="ui.game_title_word1">Body</span>
+              <span class="title-word" data-i18n="ui.game_title_word2">Explorer</span>
+            </h1>
+            <p id="splash-subtitle" class="game-subtitle" data-i18n="ui.game_subtitle">The magical anatomy adventure!</p>
+          </div>
+
+
+          <div
+            id="level-selector"
+            class="level-selector"
+            role="radiogroup"
+            aria-labelledby="level-selector-title"
+            aria-orientation="horizontal"
+          >
+            <p id="level-selector-title" class="level-selector-title" data-i18n="ui.choose_challenge">Choose your challenge!</p>
+            <div class="level-options">
+              <button
+                class="level-btn level-btn--easy active"
+                type="button"
+                role="radio"
+                aria-checked="true"
+                aria-label="Easy difficulty"
+                data-level="1"
+                data-difficulty="Easy"
+                tabindex="0"
+              >
+                <img
+                  class="level-icon"
+                  src="/icons/difficulty-easy.png"
+                  width="48"
+                  height="48"
+                  alt="Waving hand illustration representing Easy difficulty"
+                  aria-hidden="true"
+                  draggable="false"
+                />
+                <span class="level-name" data-i18n="ui.level_easy">Easy</span>
+              </button>
+              <button
+                class="level-btn level-btn--medium"
+                type="button"
+                role="radio"
+                aria-checked="false"
+                aria-label="Medium difficulty"
+                data-level="2"
+                data-difficulty="Medium"
+                tabindex="-1"
+              >
+                <img
+                  class="level-icon"
+                  src="/icons/difficulty-medium.png"
+                  width="48"
+                  height="48"
+                  alt="Happy face illustration representing Medium difficulty"
+                  aria-hidden="true"
+                  draggable="false"
+                />
+                <span class="level-name" data-i18n="ui.level_medium">Medium</span>
+              </button>
+              <button
+                class="level-btn level-btn--hard"
+                type="button"
+                role="radio"
+                aria-checked="false"
+                aria-label="Hard difficulty"
+                data-level="3"
+                data-difficulty="Hard"
+                tabindex="-1"
+              >
+                <img
+                  class="level-icon"
+                  src="/icons/difficulty-hard.png"
+                  width="48"
+                  height="48"
+                  alt="Smiling child figure illustration representing Hard difficulty"
+                  aria-hidden="true"
+                  draggable="false"
+                />
+                <span class="level-name" data-i18n="ui.level_hard">Hard</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="loading-area">
+            <div id="loading-spinner" class="spinner-container hidden" aria-hidden="true">
+              <div class="spinner-ring"></div>
+              <div class="spinner-ring"></div>
+              <div class="spinner-ring"></div>
+              <div class="spinner-core" aria-hidden="true">
+                <svg class="ui-icon icon--apricot" focusable="false"><use href="#icon-gamepad"></use></svg>
+              </div>
+            </div>
+            <p id="status" class="loading-text" role="status" aria-live="polite" data-i18n="ui.click_start">Click Start to begin.</p>
+          </div>
+
+          <button id="btn-start" class="btn-start" type="button" aria-label="Start Body Explorer adventure">
+            <span class="btn-text" data-i18n="ui.start_adventure">START ADVENTURE</span>
+            <span class="btn-stars" aria-hidden="true">
+              <svg class="ui-icon icon--apricot" focusable="false"><use href="#icon-sparkle"></use></svg>
+            </span>
+          </button>
+
+          <button id="btn-badges-entry" class="btn-badges-entry" type="button" aria-label="View my badges" data-i18n-aria-label="ui.aria_view_badges">
+            <svg class="ui-icon icon--apricot" aria-hidden="true" focusable="false"><use href="#icon-star"></use></svg>
+            <span data-i18n="ui.my_badges">MY BADGES</span>
+          </button>
+        </div>
+      </section>
 
       <!-- Game Container -->
-      <div id="game-container" class="game-container hidden">
-        <div id="video-container"></div>
-        <div id="canvas-container"></div>
-        <div id="hud-overlay"></div>
-        <button id="lang-toggle" class="lang-toggle" aria-label="Toggle Language">EN | 🇩🇪</button>
+      <section id="game-container" class="view game-container hidden" role="application" aria-label="Body Explorer game area" data-i18n-aria-label="ui.aria_game_area">
+        <div id="video-container" class="game-layer" aria-hidden="true">
+          <div class="camera-frame"></div>
+        </div>
+        <div id="canvas-container" class="game-layer" aria-hidden="true"></div>
+        <div id="hud-overlay" class="game-layer" role="region" aria-label="Game status, score, timer, and instructions" data-i18n-aria-label="ui.aria_hud" aria-live="polite"></div>
+      </section>
+
+      <!-- Floating Controls -->
+      <div id="floating-controls" aria-label="Game controls" data-i18n-aria-label="ui.aria_game_controls">
+        <button id="lang-toggle" class="lang-toggle" type="button" aria-label="Switch language">
+          <svg class="ui-icon lang-globe-icon icon--leaf" aria-hidden="true" focusable="false"><use href="#icon-language-globe"></use></svg>
+          <span class="lang-btn active" id="current-lang-btn">EN</span>
+        </button>
+
+        <button
+          class="control-btn control-btn--mute"
+          id="btn-mute"
+          type="button"
+          aria-label="Mute sound"
+          aria-pressed="false"
+        >
+          <span class="control-icon" aria-hidden="true">
+            <svg class="ui-icon icon--leaf" focusable="false"><use id="mute-icon-use" href="#icon-speaker-on"></use></svg>
+          </span>
+        </button>
+
+        <button class="control-btn" id="btn-info" type="button" aria-label="Open information for parents" data-i18n-aria-label="ui.aria_parents_info">
+          <span class="control-icon" aria-hidden="true">
+            <svg class="ui-icon icon--leaf" focusable="false"><use href="#icon-shield"></use></svg>
+          </span>
+        </button>
+
+        <button class="control-btn" id="btn-help" type="button" aria-label="Open help" data-i18n-aria-label="ui.aria_open_help">
+          <span class="control-icon" aria-hidden="true">
+            <svg class="ui-icon icon--apricot" focusable="false"><use href="#icon-help"></use></svg>
+          </span>
+        </button>
+
+        <button
+          class="control-btn control-btn--exit hidden"
+          id="btn-exit"
+          type="button"
+          aria-label="Leave game and return home"
+        >
+          <span class="control-icon" aria-hidden="true">
+            <svg class="ui-icon icon--coral" focusable="false"><use href="#icon-exit"></use></svg>
+          </span>
+        </button>
       </div>
-    </div>
+
+      <div class="help-tooltip hidden" id="help-tooltip" role="dialog" aria-labelledby="help-title">
+        <div class="help-card">
+          <h4 id="help-title" data-i18n="ui.how_to_play">How to Play</h4>
+          <ul>
+            <li><svg class="ui-icon help-step-icon icon--leaf" aria-hidden="true" focusable="false"><use href="#icon-pointer"></use></svg><span data-i18n="ui.help_step_1">Follow the instruction on screen</span></li>
+            <li><svg class="ui-icon help-step-icon icon--apricot" aria-hidden="true" focusable="false"><use href="#icon-progress"></use></svg><span data-i18n="ui.help_step_2">Touch or point to the body part shown</span></li>
+            <li><svg class="ui-icon help-step-icon icon--coral" aria-hidden="true" focusable="false"><use href="#icon-clock"></use></svg><span data-i18n="ui.help_step_3">Complete tasks before time runs out</span></li>
+            <li><svg class="ui-icon help-step-icon icon--apricot" aria-hidden="true" focusable="false"><use href="#icon-star"></use></svg><span data-i18n="ui.help_step_4">Earn stars for speed and accuracy</span></li>
+          </ul>
+          <button class="btn-close-help" id="btn-close-help" type="button" data-i18n="ui.got_it">Got it!</button>
+        </div>
+      </div>
+
+      <div class="help-tooltip hidden" id="info-tooltip" role="dialog" aria-labelledby="info-title">
+        <div class="help-card">
+          <h4 id="info-title" data-i18n="ui.parents_title">For Parents: 100% Private & Safe</h4>
+          <p style="color: var(--color-explorer-navy); font-size: 0.9rem; font-weight: 800; line-height: 1.4; margin-bottom: 1rem;" data-i18n="ui.parents_body">
+            Everything runs locally on your device. No camera data ever leaves your computer. No internet required to play!
+          </p>
+          <button class="btn-close-help" id="btn-close-info" type="button" data-i18n="ui.close">Close</button>
+        </div>
+      </div>
+
+      <dialog
+        class="exit-dialog"
+        id="exit-confirm-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="exit-dialog-title"
+      >
+        <div class="exit-dialog-card">
+          <svg class="ui-icon exit-dialog-icon icon--coral" aria-hidden="true" focusable="false"><use href="#icon-exit"></use></svg>
+          <h2 id="exit-dialog-title" data-i18n="ui.exit_confirm">Are you sure you want to leave?</h2>
+          <div class="exit-dialog-actions">
+            <button id="btn-exit-cancel" class="exit-dialog-btn exit-dialog-btn--cancel" type="button" aria-label="Keep playing" autofocus>
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#icon-close"></use></svg>
+              <span data-i18n="ui.keep_playing">Keep playing</span>
+            </button>
+            <button id="btn-exit-confirm" class="exit-dialog-btn exit-dialog-btn--confirm" type="button" aria-label="Return home">
+              <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#icon-check"></use></svg>
+              <span data-i18n="ui.return_home">Return home</span>
+            </button>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog
+        class="badges-dialog"
+        id="rewards-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rewards-title"
+      >
+        <div class="badges-dialog-card">
+          <button class="btn-close-badges" id="btn-close-badges" type="button" aria-label="Close badges panel">
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#icon-close"></use></svg>
+          </button>
+          <h2 id="rewards-title" data-i18n="ui.my_badges">My Badges</h2>
+          <div class="badges-grid" id="rewards-grid">
+            <!-- Dynamic Badges will be rendered here -->
+          </div>
+        </div>
+      </dialog>
+    </main>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

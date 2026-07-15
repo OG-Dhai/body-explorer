@@ -1,11 +1,10 @@
 /**
- * Layer 3 — Interpretation
- * 3D Euclidean distance + EMA filter for Z-axis stabilization.
- * Stub for Sprint 2.
+ * Layer 3: Interpretation
+ * 3D Euclidean distance, EMA smoothing, and scalar helpers.
  */
 
 export class EMAFilter {
-  /** @param {number} alpha — smoothing factor (0–1) */
+  /** @param {number} alpha: smoothing factor (0-1) */
   constructor(alpha = 0.3) {
     this._alpha = alpha;
     this._value = null;
@@ -42,7 +41,7 @@ export function computeDistance(a, b) {
  * Uses 80% of shoulder-to-shoulder 3D distance as the proximity zone,
  * clamped to a safe [0.15, 0.50] range.
  *
- * @param {Array} landmarks — full 33-landmark array
+ * @param {Array} landmarks: full 33-landmark array
  * @returns {number} dynamic threshold in meters
  */
 export function computeDynamicThreshold(landmarks) {
