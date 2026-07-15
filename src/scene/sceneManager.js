@@ -1,5 +1,14 @@
 import * as THREE from 'three';
 import eventBus from '../core/eventBus.js';
+import { PALETTE, toThreeColor } from '../core/palette.js';
+
+const THREE_COLORS = Object.freeze({
+  airySky: toThreeColor(PALETTE.airySky),
+  explorerNavy: toThreeColor(PALETTE.explorerNavy),
+  adventureGreen: toThreeColor(PALETTE.adventureGreen),
+  sunnyApricot: toThreeColor(PALETTE.sunnyApricot),
+  friendlyCoral: toThreeColor(PALETTE.friendlyCoral),
+});
 
 const BONE_CONNECTIONS = [
   // Torso
@@ -27,39 +36,33 @@ export class SceneManager {
   constructor(container) {
     this._container = container;
 
-    // Create scene
     this._scene = new THREE.Scene();
     
-    // Create camera
     const width = this._container.clientWidth || 800;
     const height = this._container.clientHeight || 600;
     this._camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 10);
     this._camera.position.set(0, 0, 2.5);
 
-    // Create renderer
     this._renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this._renderer.setClearColor(0x000000, 0); // Fully transparent
+    this._renderer.setClearColor(THREE_COLORS.airySky, 0); // Fully transparent
     this._renderer.setSize(width, height);
     this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._container.appendChild(this._renderer.domElement);
 
-    // Setup lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(THREE_COLORS.airySky, 0.6);
     this._scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const dirLight = new THREE.DirectionalLight(THREE_COLORS.airySky, 0.8);
     dirLight.position.set(0, 5, 5);
     this._scene.add(dirLight);
 
     // Materials - using Toon for child-friendly look
-    this._defaultMaterial = new THREE.MeshToonMaterial({ color: 0xFF6B9D }); // Warm coral
-    this._handMaterial = new THREE.MeshToonMaterial({ color: 0xFFD93D }); // Bright yellow
-    this._targetMaterial = new THREE.MeshToonMaterial({ color: 0xFF5722 }); // Red-orange
+    this._defaultMaterial = new THREE.MeshToonMaterial({ color: THREE_COLORS.friendlyCoral });
+    this._handMaterial = new THREE.MeshToonMaterial({ color: THREE_COLORS.sunnyApricot });
+    this._targetMaterial = new THREE.MeshToonMaterial({ color: THREE_COLORS.friendlyCoral });
 
-    // Spheres for joints
     this._baseRadius = 0.035;
     this._sphereGeometry = new THREE.SphereGeometry(this._baseRadius, 16, 16);
-    this._targetGeometry = new THREE.SphereGeometry(this._baseRadius * 2, 16, 16);
 
     this._spheres = [];
     for (let i = 0; i < 33; i++) {
@@ -69,19 +72,17 @@ export class SceneManager {
       this._spheres.push(mesh);
     }
 
-    // Lines for bones
     const points = [];
     for (let i = 0; i < BONE_CONNECTIONS.length * 2; i++) {
       points.push(new THREE.Vector3());
     }
     this._lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-    this._lineMaterial = new THREE.LineBasicMaterial({ color: 0x887799, linewidth: 3 }); // Soft warm gray
+    this._lineMaterial = new THREE.LineBasicMaterial({ color: THREE_COLORS.explorerNavy, linewidth: 3 });
     this._skeletonLines = new THREE.LineSegments(this._lineGeometry, this._lineMaterial);
     this._scene.add(this._skeletonLines);
 
-    // Hold progress ring
     this._ringMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0x4CAF50, 
+      color: THREE_COLORS.adventureGreen,
       side: THREE.DoubleSide, 
       transparent: true,
       opacity: 0.8 
@@ -95,15 +96,13 @@ export class SceneManager {
       this._rings.push(ring);
     }
 
-    // Color definitions for lerping
-    this._colorCold = new THREE.Color(0xFF5722); // Red-orange
-    this._colorHot = new THREE.Color(0x4CAF50);  // Bright green
+    this._colorCold = new THREE.Color(THREE_COLORS.friendlyCoral);
+    this._colorHot = new THREE.Color(THREE_COLORS.adventureGreen);
 
-    // Game state
     this._targetJoints = [];
     this._holdProgress = 0;
+    this._targetCenters = [];
 
-    // Resize listener
     this._resizeHandler = () => {
       const w = this._container.clientWidth;
       const h = this._container.clientHeight;
@@ -118,32 +117,37 @@ export class SceneManager {
   }
 
   _bindEvents() {
-    eventBus.on('game:newQuestion', ({ question }) => {
+    this._onGameNewQuestion = ({ question }) => {
       this._targetJoints = question.indices;
       this._holdProgress = 0;
-    });
+    };
 
-    eventBus.on('detection:progress', ({ progress }) => {
+    this._onDetectionProgress = ({ progress }) => {
       this._holdProgress = progress;
-    });
+    };
 
-    eventBus.on('game:stateChange', ({ state }) => {
+    this._onGameStateChange = ({ state }) => {
       if (state === 'idle') {
         this._targetJoints = [];
         this._holdProgress = 0;
       }
-    });
+    };
     
-    eventBus.on('game:complete', () => {
-        this._targetJoints = [];
-        this._holdProgress = 0;
-    });
+    this._onGameComplete = () => {
+      this._targetJoints = [];
+      this._holdProgress = 0;
+    };
+
+    eventBus.on('game:newQuestion', this._onGameNewQuestion);
+    eventBus.on('detection:progress', this._onDetectionProgress);
+    eventBus.on('game:stateChange', this._onGameStateChange);
+    eventBus.on('game:complete', this._onGameComplete);
   }
 
   /**
    * @param {Array} worldLandmarks
    * @param {number|null} currentDistance
-   * @param {number} [dynamicThreshold=0.5] — adaptive hitbox size for visual normalization
+   * @param {number} [dynamicThreshold=0.5]: adaptive hitbox size for visual normalization
    */
   update(worldLandmarks, currentDistance, dynamicThreshold) {
     if (!worldLandmarks || worldLandmarks.length < 33) {
@@ -170,7 +174,7 @@ export class SceneManager {
     this._targetMaterial.color.lerpColors(this._colorCold, this._colorHot, t);
 
     // Track active target centers for ring placement
-    const targetCenters = [];
+    this._targetCenters.length = 0;
 
     for (let i = 0; i < 33; i++) {
       const sphere = this._spheres[i];
@@ -180,46 +184,42 @@ export class SceneManager {
         sphere.position.set(-lm.x, -lm.y, lm.z);
         sphere.visible = true;
 
-        sphere.scale.set(1, 1, 1);
-        sphere.geometry = this._sphereGeometry;
-
         if (this._targetJoints.includes(i)) {
           sphere.material = this._targetMaterial;
-          sphere.geometry = this._targetGeometry;
-          sphere.scale.set(pulseScale, pulseScale, pulseScale);
-          targetCenters.push(sphere.position.clone());
+          sphere.scale.set(2 * pulseScale, 2 * pulseScale, 2 * pulseScale);
+          this._targetCenters.push(sphere.position);
         } else if (HAND_JOINTS.includes(i)) {
           sphere.material = this._handMaterial;
+          sphere.scale.set(1, 1, 1);
         } else {
           sphere.material = this._defaultMaterial;
+          sphere.scale.set(1, 1, 1);
         }
       } else {
         sphere.visible = false;
       }
     }
     
-    // Update rings based on hold progress
     for (let i = 0; i < this._rings.length; i++) {
       const ring = this._rings[i];
-      if (this._holdProgress > 0.01 && i < targetCenters.length) {
+      if (this._holdProgress > 0.01 && i < this._targetCenters.length) {
         ring.visible = true;
-        ring.position.copy(targetCenters[i]);
-        // Face the camera
+        ring.position.copy(this._targetCenters[i]);
         ring.quaternion.copy(this._camera.quaternion);
-        // Animate geometry based on progress
-        ring.geometry.dispose();
-        ring.geometry = new THREE.RingGeometry(0.1, 0.12, 32, 1, 0, Math.PI * 2 * this._holdProgress);
+        // Animate draw range to fill the arc (0 to 32 segments, 6 indices per segment)
+        const segmentsToDraw = Math.max(1, Math.floor(this._holdProgress * 32));
+        ring.geometry.setDrawRange(0, segmentsToDraw * 6);
       } else {
         ring.visible = false;
       }
     }
 
-    // Update lines
     const positions = this._lineGeometry.attributes.position.array;
     let index = 0;
-    for (const [a, b] of BONE_CONNECTIONS) {
-      const pA = worldLandmarks[a];
-      const pB = worldLandmarks[b];
+    for (let i = 0; i < BONE_CONNECTIONS.length; i++) {
+      const conn = BONE_CONNECTIONS[i];
+      const pA = worldLandmarks[conn[0]];
+      const pB = worldLandmarks[conn[1]];
 
       if (pA && pB) {
         positions[index++] = -pA.x;
@@ -241,8 +241,11 @@ export class SceneManager {
 
   dispose() {
     window.removeEventListener('resize', this._resizeHandler);
+    eventBus.off('game:newQuestion', this._onGameNewQuestion);
+    eventBus.off('detection:progress', this._onDetectionProgress);
+    eventBus.off('game:stateChange', this._onGameStateChange);
+    eventBus.off('game:complete', this._onGameComplete);
     this._sphereGeometry.dispose();
-    this._targetGeometry.dispose();
     this._lineGeometry.dispose();
     this._defaultMaterial.dispose();
     this._handMaterial.dispose();

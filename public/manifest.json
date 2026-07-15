@@ -1,0 +1,20 @@
+{
+  "name": "Body Explorer",
+  "short_name": "Body Explorer",
+  "description": "Privacy-first body-learning game with local pose tracking.",
+  "start_url": ".",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape-primary",
+  "background_color": "#EEF7FA",
+  "theme_color": "#2C7A4B",
+  "categories": ["education", "games", "kids"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -9,7 +9,6 @@ export class HoldDetector {
     this._decayRate = CONFIG.detection.decayRate;
     this._threshold = CONFIG.detection.proximityThreshold;
     this._elapsed = 0;
-    this._confidence = 0;
     
     this._fsm = new StateMachine({
       id: 'hold-detector',
@@ -37,9 +36,9 @@ export class HoldDetector {
 
   /**
    * Update the hold detector based on distance.
-   * @param {number|null} distance — raw 3D distance to closest target joint
-   * @param {number} deltaTime — milliseconds since last update
-   * @param {number} [dynamicThreshold] — body-size-adaptive proximity zone (meters)
+   * @param {number|null} distance: raw 3D distance to closest target joint
+   * @param {number} deltaTime: milliseconds since last update
+   * @param {number} [dynamicThreshold]: body-size-adaptive proximity zone (meters)
    */
   update(distance, deltaTime, dynamicThreshold) {
     const threshold = dynamicThreshold ?? this._threshold;
@@ -49,7 +48,6 @@ export class HoldDetector {
     if (distance !== null && distance < threshold) {
       confidence = 1 - (distance / threshold);
     }
-    this._confidence = confidence;
     const above = confidence > 0;
 
     switch (this._fsm.getState()) {
@@ -74,7 +72,7 @@ export class HoldDetector {
         break;
       
       case 'decaying':
-        this._elapsed *= this._decayRate;
+        this._elapsed *= Math.pow(this._decayRate, deltaTime / 16.67);
         eventBus.emit('detection:progress', { progress: this.getProgress() });
         
         if (above) {
@@ -87,7 +85,6 @@ export class HoldDetector {
         break;
         
       case 'confirmed':
-        // Wait for reset
         break;
     }
   }
@@ -100,8 +97,11 @@ export class HoldDetector {
       this._fsm.transition('CANCEL');
     }
     this._elapsed = 0;
-    this._confidence = 0;
     eventBus.emit('detection:progress', { progress: 0 });
+  }
+
+  setHoldDuration(ms) {
+    this._holdDuration = ms;
   }
 
   getProgress() {
