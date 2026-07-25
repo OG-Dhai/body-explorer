@@ -1,9 +1,5 @@
-/**
- * Layer 2: Perception: FaceMesh Service
- *
- * Main-thread controller for lazy FaceLandmarker execution. No worker is
- * created until a facial target is active, and deactivation terminates it.
- */
+// Controls the FaceLandmarker worker, lazily. Nothing is created until a face
+// target is active, and deactivating tears the worker down.
 
 export class FaceMeshService {
   constructor() {

@@ -1,7 +1,4 @@
-/**
- * Layer 3: Interpretation
- * 3D Euclidean distance, EMA smoothing, and scalar helpers.
- */
+// Small math helpers: 3D distance, EMA smoothing, and a few scalar utilities.
 
 export class EMAFilter {
   /** @param {number} alpha: smoothing factor (0-1) */

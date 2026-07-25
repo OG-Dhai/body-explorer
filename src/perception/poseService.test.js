@@ -72,9 +72,9 @@ describe('PoseService watchdog', () => {
     expect(worker.terminated).toBe(false);
     expect(WorkerMock.instances).toHaveLength(1);
 
-    worker.emit({ type: 'result', worldLandmarks: [] });
+    worker.emit({ type: 'result', landmarks: [], worldLandmarks: [] });
 
-    expect(onResult).toHaveBeenCalledWith([]);
+    expect(onResult).toHaveBeenCalledWith({ landmarks: [], worldLandmarks: [] });
     service.destroy();
   });
 

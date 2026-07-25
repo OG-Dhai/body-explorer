@@ -6,7 +6,9 @@ import puppeteer from 'puppeteer';
 const root = process.cwd();
 const port = 4183;
 const url = `http://127.0.0.1:${port}/`;
-const expectedSequence = ['de', 'fr', 'es', 'ru', 'en'];
+// Order deliberately jumps back to 'en' after 'de' to prove the picker allows
+// direct selection of any language, not just a one-way cycle.
+const pickOrder = ['de', 'en', 'ru', 'fr', 'es'];
 const server = spawn(
   process.execPath,
   [path.join(root, 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', String(port)],
@@ -75,8 +77,13 @@ try {
   if (!toggle) throw new Error('Missing #lang-toggle.');
 
   const states = [];
-  for (const expectedLocale of expectedSequence) {
+  for (const expectedLocale of pickOrder) {
+    // Open the picker, then choose the target language directly.
     await toggle.click();
+    await page.waitForSelector('#lang-menu:not(.hidden)', { timeout: 5_000 });
+    const option = await page.$(`.lang-menu-item[data-locale="${expectedLocale}"]`);
+    if (!option) throw new Error(`Missing language option for ${expectedLocale}.`);
+    await option.click();
     await page.waitForFunction(
       locale => window.__languageVerification.i18n.getLocale() === locale,
       { timeout: 5_000 },
@@ -99,10 +106,15 @@ try {
             ? []
             : [{ key, actual: element.getAttribute('aria-label'), expected: translated }];
         });
+      const checkedLocales = [...document.querySelectorAll('.lang-menu-item[aria-checked="true"]')]
+        .map(element => element.dataset.locale);
       return {
         expected,
         locale: i18n.getLocale(),
         label: document.querySelector('#current-lang-btn')?.textContent,
+        menuHidden: document.querySelector('#lang-menu')?.classList.contains('hidden'),
+        toggleExpanded: document.querySelector('#lang-toggle')?.getAttribute('aria-expanded'),
+        checkedLocales,
         toggleCount: document.querySelectorAll('#lang-toggle').length,
         labelCount: document.querySelectorAll('#current-lang-btn').length,
         isConnected: document.querySelector('#lang-toggle')?.isConnected,
@@ -133,6 +145,10 @@ try {
   if (states.some((state, index) => (
     state.locale !== state.expected
     || state.label !== state.expected.toUpperCase()
+    || state.menuHidden !== true
+    || state.toggleExpanded !== 'false'
+    || state.checkedLocales.length !== 1
+    || state.checkedLocales[0] !== state.expected
     || state.toggleCount !== 1
     || state.labelCount !== 1
     || !state.isConnected
@@ -141,7 +157,7 @@ try {
     || state.documentTitle !== state.expectedDocumentTitle
     || state.mismatches.length > 0
     || state.ariaMismatches.length > 0
-  ))) failures.push(`Locale-cycle state mismatch: ${JSON.stringify(states)}`);
+  ))) failures.push(`Language-picker state mismatch: ${JSON.stringify(states)}`);
   if (directSetState.locale !== 'fr'
       || directSetState.label !== 'FR'
       || directSetState.subtitle !== directSetState.expectedSubtitle) {

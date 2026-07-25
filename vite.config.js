@@ -3,34 +3,22 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 import fs from 'fs';
 import path from 'path';
 
-/**
- * TECHNICAL DEBT — MediaPipe WASM loader patch
- *
- * @mediapipe/tasks-vision@0.10.35 ships a WASM loader file
- * (node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.js) with
- * two defects that prevent it from working inside a Web Worker context:
- *
- *   1. `function custom_dbg(text)` is declared as a hoisted function statement
- *      inside a scope where strict-mode / bundler transforms cause a
- *      ReferenceError ("custom_dbg is not defined").  We rewrite it to
- *      `var custom_dbg = function(text)` to ensure the binding is available.
- *
- *   2. `ModuleFactory` (the Emscripten entry point) is never exported to
- *      `globalThis`, so callers in a Worker that expect
- *      `globalThis.ModuleFactory` get "ModuleFactory not set".  We append
- *      the missing assignment at the end of the file.
- *
- * This patch is applied in TWO places:
- *   - mediapipeDevPlugin()   → transforms the file on-the-fly during dev serve
- *   - viteStaticCopy targets → transforms the file during production build copy
- *
- * Verified against: @mediapipe/tasks-vision 0.10.35 (2026-07-15).
- *
- * ⚠  When upgrading @mediapipe/tasks-vision, re-check whether upstream has
- *    fixed either issue.  If so, REMOVE the corresponding rewrite branch and
- *    test both `npm run dev` and `npm run build && npm run preview` with a
- *    real camera before releasing.
- */
+// MediaPipe WASM loader patch.
+//
+// @mediapipe/tasks-vision 0.10.35 ships a WASM loader
+// (node_modules/@mediapipe/tasks-vision/wasm/vision_wasm_internal.js) that
+// doesn't work inside a Web Worker as-is. Two fixes:
+//   1. custom_dbg is a hoisted function declaration that throws a ReferenceError
+//      under strict mode, so we rewrite it to a var assignment.
+//   2. ModuleFactory is never put on globalThis, so worker callers get
+//      "ModuleFactory not set". We append that assignment.
+//
+// Applied in two places: mediapipeDevPlugin() during dev, and the viteStaticCopy
+// transform during the production build.
+//
+// Checked against 0.10.35 (2026-07-15). When you bump tasks-vision, check if
+// upstream fixed either issue; if so, drop the matching branch and test dev and
+// build+preview with a real camera first.
 function patchMediapipeLoader(content) {
   let patched = content.replace(
     /function custom_dbg\(text\)/g,
@@ -111,11 +99,9 @@ export default defineConfig({
           dest: 'wasm/mediapipe',
           rename: { stripBase: true },
         },
-        {
-          src: 'src/wasm/mediapipe/pose_landmarker_lite.task',
-          dest: 'wasm/mediapipe',
-          rename: { stripBase: true },
-        },
+        // Note: the pose/hand/face .task models are bundled automatically via
+        // `new URL('../wasm/mediapipe/<model>.task', import.meta.url)` in their
+        // workers, so they do not need an explicit copy target here.
       ],
     }),
   ],

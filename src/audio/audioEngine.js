@@ -1,13 +1,6 @@
-/**
- * Layer 4: Application: Audio Engine
- *
- * Provides audio playback using Web Audio API caching.
- *   1. Pre-recorded voice prompts
- *   2. Curated gameplay music, transition cues, and UI feedback
- *   3. Oscillator fallbacks for graceful degradation
- *
- * AudioContext is lazy-initialized on first user gesture.
- */
+// Audio engine. Plays the pre-recorded voice prompts and the UI sound cues,
+// with oscillator fallbacks when a clip is missing. The AudioContext is created
+// on the first user gesture, not before.
 
 import { i18n, AUDIO_KEYS } from '../core/i18n.js';
 import eventBus from '../core/eventBus.js';
@@ -44,8 +37,10 @@ const pendingAudioLoads = new Map();
 let reverseMap = null;
 let reverseMapLang = null;
 
-const BACKGROUND_VOLUME = 0.14;
-const BACKGROUND_DUCKED_VOLUME = 0.055;
+const BACKGROUND_VOLUME = 0.12;
+// Music drops well below the narration while a voice plays so it never competes
+// with the spoken prompt (sound-design research: keep narration clear).
+const BACKGROUND_DUCKED_VOLUME = 0.035;
 const VOICE_VOLUME = 0.68;
 const SFX_VOLUME = 0.34;
 const UI_CLICK_VOLUME = 0.52;
@@ -80,14 +75,9 @@ export const GAME_AUDIO_ASSETS = Object.freeze({
     url: new URL('../../audio_downloads/cartoon-transition-sting-fast-happy-turn-500910.mp3', import.meta.url).href,
     volume: 0.32,
   }),
-  'bgm:soothing': Object.freeze({
-    fileName: 'soothing-happy-strings-loop-294236.mp3',
-    url: new URL('../../audio_downloads/soothing-happy-strings-loop-294236.mp3', import.meta.url).href,
-    volume: BACKGROUND_VOLUME,
-  }),
-  'bgm:upbeat': Object.freeze({
-    fileName: 'the-best-day-ever-loop-533304.mp3',
-    url: new URL('../../audio_downloads/the-best-day-ever-loop-533304.mp3', import.meta.url).href,
+  'bgm:background': Object.freeze({
+    fileName: 'background.mp3',
+    url: '/audio/music/background.mp3', // the loop that ships in public/audio/music
     volume: BACKGROUND_VOLUME,
   }),
   'ui:click': Object.freeze({
@@ -102,7 +92,7 @@ export const GAME_AUDIO_ASSETS = Object.freeze({
   }),
 });
 
-const BACKGROUND_TRACKS = ['bgm:soothing', 'bgm:upbeat'];
+const BACKGROUND_TRACKS = ['bgm:background'];
 
 /** @type {{ key: string, source: AudioBufferSourceNode, gain: GainNode }|null} */
 let backgroundPlayback = null;
@@ -113,7 +103,7 @@ let backgroundPlaybackGeneration = 0;
 const transientPlaybacks = new Set();
 const scheduledToneTimers = new Set();
 
-// ── AudioContext Management ──
+// AudioContext management
 
 /**
  * Get or create the shared AudioContext.
@@ -246,7 +236,7 @@ export async function resumeAudio() {
   }
 }
 
-// ── Pre-recorded Audio Cache ──
+// Pre-recorded audio cache
 
 function resolveLegacyAsset(key, lang) {
   if (key.startsWith('sfx:')) {
@@ -486,7 +476,7 @@ export async function speak(text) {
   return playFallbackVoiceTone(text);
 }
 
-// ── UI Sound Module (Oscillator) ──
+// UI sounds (oscillator)
 
 /**
  * Play a simple tone for UI feedback (correct answer, error, etc.).
@@ -532,7 +522,7 @@ export async function playTone(frequency, duration = 150, type = 'sine') {
   }
 }
 
-// ── Preset Sounds ──
+// Preset sounds
 
 function setGainTarget(gainNode, value, fadeSeconds = 0.12) {
   if (!audioCtx) return;
@@ -804,11 +794,31 @@ export function stopBackgroundMusic(fadeSeconds = MUSIC_FADE_SECONDS) {
   stopPlayback(playback, fadeSeconds);
 }
 
+// The oscillator earcons, used as fallbacks when the audio files aren't
+// bundled. Based on sound-design research (PMC7219267): good cues rise in pitch
+// through bright intervals, bad cues stay soft and fall gently. Sine and
+// triangle only, so nothing ever buzzes.
+const NOTE = Object.freeze({
+  F4: 349.23, G4: 392.00, A4: 440.00,
+  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00, B5: 987.77,
+  C6: 1046.50, E6: 1318.51, G6: 1567.98,
+});
+
+/** Play several notes at once (a chord) for a fuller, celebratory sound. */
+function playChord(frequencies, durationMs, type = 'sine') {
+  for (const frequency of frequencies) playTone(frequency, durationMs, type);
+}
+
 /** Start/loading transition cue. It is faded when gameplay music starts. */
 export function playGameStart() {
   stopCuePlayback('cue:gameComplete', 0.08);
   stopCuePlayback('cue:levelComplete', 0.08);
-  return playCachedCue('cue:gameStart', null, { duckBackground: true });
+  return playCachedCue('cue:gameStart', () => {
+    // Gentle "here we go" rise while things load.
+    playTone(NOTE.G4, 120, 'sine');
+    scheduleTone(() => playTone(NOTE.C5, 120, 'sine'), 130);
+    scheduleTone(() => playTone(NOTE.E5, 200, 'sine'), 260);
+  }, { duckBackground: true });
 }
 
 /** Cancel the start/loading transition if boot cannot continue. */
@@ -816,31 +826,36 @@ export function stopGameStart(fadeSeconds = 0.12) {
   stopCuePlayback('cue:gameStart', fadeSeconds);
 }
 
-/** Correct-answer success sting. */
+/** Correct-answer success sting: a bright rising C-major arpeggio to a sparkle. */
 export function playSuccess() {
   return playCachedCue('cue:roundSuccess', () => {
-    playTone(523.25, 100, 'sine');   // C5
-    scheduleTone(() => playTone(659.25, 150, 'sine'), 120); // E5
+    playTone(NOTE.C5, 90, 'sine');
+    scheduleTone(() => playTone(NOTE.E5, 90, 'sine'), 90);
+    scheduleTone(() => playTone(NOTE.G5, 110, 'sine'), 180);
+    scheduleTone(() => playTone(NOTE.C6, 200, 'sine'), 280);
   });
 }
 
-/** Passed-level transition cue. */
+/** Passed-level cue: the rising triad again, resolving to a bright major chord. */
 export function playWellDone() {
   stopCuePlayback('cue:roundSuccess', 0.08);
   return playCachedCue('cue:levelComplete', () => {
-    playTone(523.25, 120, 'triangle');
-    scheduleTone(() => playTone(659.25, 120, 'triangle'), 130);
-    scheduleTone(() => playTone(783.99, 180, 'triangle'), 260);
+    playTone(NOTE.C5, 100, 'triangle');
+    scheduleTone(() => playTone(NOTE.E5, 100, 'triangle'), 110);
+    scheduleTone(() => playTone(NOTE.G5, 100, 'triangle'), 220);
+    scheduleTone(() => playChord([NOTE.C6, NOTE.E6], 320, 'sine'), 340);
   }, { duckBackground: false });
 }
 
-/** End-screen transition cue. */
+/** End-screen cue: a triumphant rising run into a full major-chord fanfare. */
 export function playGameComplete() {
   stopAllCuePlaybacks(0.08);
   return playCachedCue('cue:gameComplete', () => {
-    playTone(659.25, 90, 'sine');
-    scheduleTone(() => playTone(783.99, 90, 'sine'), 110);
-    scheduleTone(() => playTone(1046.5, 220, 'triangle'), 220);
+    playTone(NOTE.C5, 90, 'triangle');
+    scheduleTone(() => playTone(NOTE.E5, 90, 'triangle'), 100);
+    scheduleTone(() => playTone(NOTE.G5, 90, 'triangle'), 200);
+    scheduleTone(() => playTone(NOTE.C6, 110, 'triangle'), 300);
+    scheduleTone(() => playChord([NOTE.C6, NOTE.E6, NOTE.G6], 420, 'sine'), 430);
   }, { duckBackground: false });
 }
 
@@ -849,29 +864,51 @@ export function playFireworks() {
   return playGameComplete();
 }
 
-/** Negative feedback: low buzz */
+/** Gentle "try again": a soft, falling major third. Never a harsh buzz. */
 export function playError() {
-  // Uses oscillator by default if sfx:error fails to load, per UX decision
   return playCachedSfx('sfx:error', () => {
-    playTone(200, 250, 'square');
+    playTone(NOTE.A4, 130, 'sine');
+    scheduleTone(() => playTone(NOTE.F4, 200, 'sine'), 120);
   });
 }
 
-/** Neutral UI click */
+/** Short "your turn" cue: a bright, quick rising fifth = "go!". */
+export function playYourTurn() {
+  const generation = playbackGeneration;
+  if (!canStartPlayback(generation)) return Promise.resolve(false);
+  playTone(NOTE.D5, 70, 'sine');
+  scheduleTone(() => playTone(NOTE.A5, 120, 'sine'), 75);
+  return Promise.resolve(true);
+}
+
+/**
+ * Gentle "look again" nudge for a wrong-part touch: a soft, encouraging RISING
+ * third (not a negative buzz), paired with a re-spoken prompt.
+ */
+export function playSoftNudge() {
+  const generation = playbackGeneration;
+  if (!canStartPlayback(generation)) return Promise.resolve(false);
+  playTone(NOTE.A4, 90, 'sine');
+  scheduleTone(() => playTone(NOTE.C5, 120, 'sine'), 90);
+  return Promise.resolve(true);
+}
+
+/** Neutral UI click: a soft, warm, woody triangle tap (unobtrusive, never sharp). */
 export function playClick() {
   return playCachedSfx('ui:click', () => {
-    playTone(880, 60, 'triangle');
+    playTone(NOTE.G4, 55, 'triangle');
   });
 }
 
-/** Difficulty/menu selection confirmation. */
+/** Difficulty/menu selection: a gentle rising fourth = a pleasant "chosen". */
 export function playMenuSelection() {
   return playCachedSfx('ui:menuSelection', () => {
-    playTone(659.25, 90, 'sine');
+    playTone(NOTE.C5, 70, 'sine');
+    scheduleTone(() => playTone(NOTE.F5, 100, 'sine'), 70);
   });
 }
 
-// ── Cleanup ──
+// Cleanup
 
 /** Stop every active or pending sound without changing the mute preference. */
 export function stopAllAudio() {

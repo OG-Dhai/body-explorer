@@ -26,6 +26,9 @@ audio_downloads/
 # Agent framework
 .agents/
 
+# Local tool settings
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

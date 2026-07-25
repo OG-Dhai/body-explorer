@@ -1,9 +1,5 @@
-/**
- * Layer 2: Perception: FaceMesh Worker
- *
- * Runs MediaPipe FaceLandmarker off-main-thread only while facial targets are
- * active. Returns the full FaceMesh landmark set for target refinement.
- */
+// Runs MediaPipe FaceLandmarker off the main thread, only while a face target
+// is active. Returns the full face mesh so we can find the precise face points.
 
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 

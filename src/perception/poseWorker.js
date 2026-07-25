@@ -1,19 +1,17 @@
-/**
- * Layer 2: Perception: Pose Worker
- *
- * Runs MediaPipe PoseLandmarker entirely off-main-thread.
- * Receives ImageBitmap via transferable, returns worldLandmarks.
- * WASM files served from /wasm/mediapipe/ (self-hosted, zero CDN).
- *
- * Message Protocol:
- *   Main → Worker:  { type: 'init' }
- *   Worker → Main:  { type: 'ready' }
- *   Main → Worker:  { type: 'process', bitmap: ImageBitmap, timestamp: number }
- *   Worker → Main:  { type: 'result', worldLandmarks: Array }
- *   Worker → Main:  { type: 'error', message: string }
- */
+// Runs MediaPipe PoseLandmarker off the main thread. Takes an ImageBitmap and
+// returns both image and world landmarks. WASM is self-hosted from
+// /wasm/mediapipe/, no CDN.
+//
+// Messages in: { type:'init' } and { type:'process', bitmap, timestamp }.
+// Messages out: { type:'ready' }, { type:'result', landmarks, worldLandmarks }
+// or { type:'error', message }.
 
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
+
+// The "full" model tracks joints more steadily than "lite", which matters
+// because these points are the recognition targets. Loaded via new URL(...) so
+// Vite bundles it as a hashed asset.
+const POSE_MODEL_URL = new URL('../wasm/mediapipe/pose_landmarker_full.task', import.meta.url).href;
 
 /** @type {PoseLandmarker|null} */
 let landmarker = null;
@@ -25,17 +23,14 @@ console.warn = function(...args) {
   originalWarn.apply(console, args);
 };
 
-/**
- * Initialize the PoseLandmarker with locally served WASM + model.
- * Called once on 'init' message from main thread.
- */
+// Set up the PoseLandmarker from the local WASM and model. Runs once on 'init'.
 async function initialize() {
   const basePath = '/wasm/mediapipe';
   const vision = await FilesetResolver.forVisionTasks(basePath);
 
   landmarker = await PoseLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: '/wasm/mediapipe/pose_landmarker_lite.task',
+      modelAssetPath: POSE_MODEL_URL,
       delegate: 'GPU',
     },
     runningMode: 'VIDEO',
@@ -45,13 +40,8 @@ async function initialize() {
   self.postMessage({ type: 'ready' });
 }
 
-/**
- * Process a single video frame.
- * CRITICAL: bitmap.close() is called after detection to prevent GPU/CPU memory leaks.
- *
- * @param {ImageBitmap} bitmap
- * @param {number} timestamp: milliseconds
- */
+// Process one video frame. Always closes the bitmap afterwards, otherwise the
+// GPU/CPU memory leaks frame by frame.
 function processFrame(bitmap, timestamp) {
   if (!landmarker) {
     bitmap.close();
@@ -62,10 +52,14 @@ function processFrame(bitmap, timestamp) {
   try {
     const result = landmarker.detectForVideo(bitmap, timestamp);
 
-    // Extract ONLY worldLandmarks (metric 3D coordinates, not screen-space)
-    const worldLandmarks = result.worldLandmarks ?? [];
-
-    self.postMessage({ type: 'result', worldLandmarks });
+    // `landmarks` are normalized image coordinates (stable x/y, used for the
+    // recognition math); `worldLandmarks` are metric 3D (used to draw the
+    // on-screen skeleton). We forward both.
+    self.postMessage({
+      type: 'result',
+      landmarks: result.landmarks ?? [],
+      worldLandmarks: result.worldLandmarks ?? [],
+    });
   } catch (err) {
     self.postMessage({ type: 'error', message: err.message });
   } finally {
@@ -73,7 +67,6 @@ function processFrame(bitmap, timestamp) {
   }
 }
 
-// ── Message Dispatcher ──
 self.onmessage = async (event) => {
   const { type, bitmap, timestamp } = event.data;
 

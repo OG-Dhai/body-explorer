@@ -9,6 +9,10 @@ export class HoldDetector {
     this._decayRate = CONFIG.detection.decayRate;
     this._threshold = CONFIG.detection.proximityThreshold;
     this._elapsed = 0;
+    // Closest distance seen during the current track, used for the anti-hover
+    // (genuine-contact) gate: a hold only confirms if the hand actually dipped
+    // inside the contact radius, not merely lingered in the outer zone.
+    this._minSeen = Infinity;
     
     this._fsm = new StateMachine({
       id: 'hold-detector',
@@ -22,6 +26,7 @@ export class HoldDetector {
       },
       onEnter: {
         idle: () => {
+          this._minSeen = Infinity;
           if (this._elapsed > 0) {
             this._elapsed = 0;
             eventBus.emit('detection:progress', { progress: 0 });
@@ -36,12 +41,16 @@ export class HoldDetector {
 
   /**
    * Update the hold detector based on distance.
-   * @param {number|null} distance: raw 3D distance to closest target joint
+   * @param {number|null} distance: proximity to the asked part (body-normalized)
    * @param {number} deltaTime: milliseconds since last update
-   * @param {number} [dynamicThreshold]: body-size-adaptive proximity zone (meters)
+   * @param {number} [dynamicThreshold]: outer proximity zone; hold accumulates inside it
+   * @param {number} [contactRadius]: inner zone the hand must reach at least once
+   *   for a genuine touch. Defaults to the outer threshold (no extra gate), which
+   *   preserves the original behaviour for callers that pass three arguments.
    */
-  update(distance, deltaTime, dynamicThreshold) {
+  update(distance, deltaTime, dynamicThreshold, contactRadius) {
     const threshold = dynamicThreshold ?? this._threshold;
+    const contact = contactRadius ?? threshold;
 
     // Normalize distance against threshold (closer = higher confidence, >= threshold = 0)
     let confidence = 0;
@@ -54,19 +63,23 @@ export class HoldDetector {
       case 'idle':
         if (above) {
           this._elapsed = 0;
+          this._minSeen = distance;
           this._fsm.transition('START_TRACKING');
         }
         break;
-      
+
       case 'tracking':
         if (!above) {
           this._fsm.transition('LOSE_CONFIDENCE');
           break;
         }
         this._elapsed += deltaTime;
+        if (distance !== null && distance < this._minSeen) this._minSeen = distance;
         eventBus.emit('detection:progress', { progress: this.getProgress() });
-        
-        if (this._elapsed >= this._holdDuration) {
+
+        // Confirm only after a genuine contact (closest approach inside the
+        // contact radius), so a steady hover never wins.
+        if (this._elapsed >= this._holdDuration && this._minSeen <= contact) {
           this._fsm.transition('CONFIRM');
         }
         break;
@@ -97,6 +110,7 @@ export class HoldDetector {
       this._fsm.transition('CANCEL');
     }
     this._elapsed = 0;
+    this._minSeen = Infinity;
     eventBus.emit('detection:progress', { progress: 0 });
   }
 

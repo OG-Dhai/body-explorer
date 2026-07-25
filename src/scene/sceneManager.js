@@ -247,6 +247,8 @@ export class SceneManager {
     eventBus.off('game:complete', this._onGameComplete);
     this._sphereGeometry.dispose();
     this._lineGeometry.dispose();
+    // Each ring owns its own RingGeometry, so release them individually.
+    for (const ring of this._rings) ring.geometry.dispose();
     this._defaultMaterial.dispose();
     this._handMaterial.dispose();
     this._targetMaterial.dispose();

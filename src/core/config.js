@@ -12,6 +12,24 @@ export const CONFIG = {
       coldStartTimeoutMs: 30000,
       steadyStateTimeoutMs: 3000,
     },
+    // Hit validation tunables. Distances are in normalized image space,
+    // divided by shoulder width so they scale with the child's distance from
+    // the camera. See src/engine/hitValidator.js.
+    hit: {
+      // How close the fingertip has to get (times shoulder width) before the
+      // hold timer starts.
+      baseRadius: 0.45,
+      // Must dip at least this close once, so a fingertip just passing through
+      // never counts. Only a real touch does.
+      contactRadius: 0.30,
+      // The asked part has to be the nearest one, within this slack. Stops
+      // "touched the eye, won the nose".
+      nearestMargin: 0.12,
+      // How long a hand can sit on the wrong part before we gently correct.
+      wrongPartHoldMs: 500,
+      // Loosen the radius a bit in low light. Not enough to let false wins back.
+      lowLightRadiusScale: 1.10,
+    },
   },
   game: {
     baseScore: 100,
@@ -34,7 +52,8 @@ export const CONFIG = {
         name: 'easy',
         questionsPerRound: 4,
         holdDuration: 1200,
-        thresholdMultiplier: 1.3,
+        // Same hit tolerance on every level. Only the timing gets tighter.
+        hitRadiusScale: 1.0,
         instructionDelay: 2000,
         questionTimeout: 15000,
         comboRequirement: 0,
@@ -43,7 +62,7 @@ export const CONFIG = {
         name: 'medium',
         questionsPerRound: 6,
         holdDuration: 1000,
-        thresholdMultiplier: 1.0,
+        hitRadiusScale: 1.0, // same tolerance as Easy
         instructionDelay: 1500,
         questionTimeout: 12000,
         comboRequirement: 0,
@@ -52,37 +71,48 @@ export const CONFIG = {
         name: 'hard',
         questionsPerRound: 7,
         holdDuration: 700,
-        thresholdMultiplier: 0.75,
+        hitRadiusScale: 1.0, // same tolerance as Easy
         instructionDelay: 1000,
         questionTimeout: 8000,
         comboRequirement: 3,
       }
     }
   },
+  // Targets are grouped into three tiers in the order kids learn body parts
+  // (research PMC4505369): face and head first, then torso, then limbs and the
+  // fine joints last. easy = level 1, normal = level 2, advanced = level 3.
+  // Tolerance is the same everywhere; the nearest-part check keeps the clustered
+  // face parts from validating each other. Keep tier sizes at 5/8/10 so the
+  // QuestionBank fallback still works.
   targetMap: {
+    // Level 1 (easy): face and head
     head:           { indices: [0, 7, 8], difficulty: 'easy' },
-    chest:          { indices: [11, 12], difficulty: 'easy' }, // Shoulder midpoint is more stable than hips
-    nose:           { indices: [0], difficulty: 'easy', thresholdMultiplier: 1.8 },
-    hips:           { indices: [23, 24], difficulty: 'easy' },
-    left_shoulder:  { indices: [11], difficulty: 'advanced' },
-    right_shoulder: { indices: [12], difficulty: 'advanced' },
+    nose:           { indices: [0], difficulty: 'easy' },
+    mouth:          { indices: [9, 10], difficulty: 'easy' },
+    left_eye:       { indices: [2], difficulty: 'easy' },
+    right_eye:      { indices: [5], difficulty: 'easy' },
+
+    // Level 2 (normal): ears, torso, shoulders
+    left_ear:       { indices: [7], difficulty: 'normal' },
+    right_ear:      { indices: [8], difficulty: 'normal' },
+    chest:          { indices: [11, 12], difficulty: 'normal', centroid: true, centroidLowerBy: 0.3 }, // shoulder midpoint pulled 30% toward the hips
+    hips:           { indices: [23, 24], difficulty: 'normal' },
+    left_hip:       { indices: [23], difficulty: 'normal' },
+    right_hip:      { indices: [24], difficulty: 'normal' },
+    left_shoulder:  { indices: [11], difficulty: 'normal' },
+    right_shoulder: { indices: [12], difficulty: 'normal' },
+
+    // Level 3 (advanced): hands, feet, fine joints
+    left_wrist:     { indices: [15], difficulty: 'advanced' },
+    right_wrist:    { indices: [16], difficulty: 'advanced' },
+    left_foot:      { indices: [29, 31], difficulty: 'advanced' },
+    right_foot:     { indices: [30, 32], difficulty: 'advanced' },
     left_elbow:     { indices: [13], difficulty: 'advanced' },
     right_elbow:    { indices: [14], difficulty: 'advanced' },
     left_knee:      { indices: [25], difficulty: 'advanced' },
     right_knee:     { indices: [26], difficulty: 'advanced' },
-    left_hip:       { indices: [23], difficulty: 'normal' },
-    right_hip:      { indices: [24], difficulty: 'normal' },
-    left_wrist:     { indices: [15], difficulty: 'advanced' },
-    right_wrist:    { indices: [16], difficulty: 'advanced' },
     left_ankle:     { indices: [27], difficulty: 'advanced' },
-    right_ankle:    { indices: [28], difficulty: 'advanced' },
-    left_ear:       { indices: [7], difficulty: 'normal', thresholdMultiplier: 1.8 },
-    right_ear:      { indices: [8], difficulty: 'normal', thresholdMultiplier: 1.8 },
-    mouth:          { indices: [9, 10], difficulty: 'easy', thresholdMultiplier: 1.8 },
-    left_eye:       { indices: [2], difficulty: 'normal', thresholdMultiplier: 1.8 },
-    right_eye:      { indices: [5], difficulty: 'normal', thresholdMultiplier: 1.8 },
-    left_foot:      { indices: [29, 31], difficulty: 'normal' },
-    right_foot:     { indices: [30, 32], difficulty: 'normal' }
+    right_ankle:    { indices: [28], difficulty: 'advanced' }
   }
 };
 

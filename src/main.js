@@ -1,5 +1,6 @@
 import { CameraService } from './input/cameraService.js';
 import { PoseService } from './perception/poseService.js';
+import { HandService } from './perception/handService.js';
 import { FaceMeshService } from './perception/faceMeshService.js';
 import {
   dispose as disposeAudio,
@@ -11,8 +12,10 @@ import {
   playGameComplete,
   playGameStart,
   playMenuSelection,
+  playSoftNudge,
   playSuccess,
   playWellDone,
+  playYourTurn,
   preloadAudioAssets,
   resumeAudio,
   stopAllAudio,
@@ -30,7 +33,7 @@ import { EMAFilter } from './math/spatialMath.js';
 import { LightingAnalyzer } from './perception/lightingAnalyzer.js';
 import eventBus from './core/eventBus.js';
 import { CONFIG } from './core/config.js';
-import { i18n, DICTIONARY } from './core/i18n.js';
+import { i18n, DICTIONARY, LANGUAGE_NAMES } from './core/i18n.js';
 import { PALETTE } from './core/palette.js';
 import { resumeSessionInSameTick } from './core/sessionLifecycle.js';
 import { badgeSystem, BADGE_DETAILS } from './engine/badgeSystem.js';
@@ -44,6 +47,7 @@ const videoContainer = document.getElementById('video-container');
 const canvasContainer = document.getElementById('canvas-container');
 const hudContainer = document.getElementById('hud-overlay');
 const langToggle = document.getElementById('lang-toggle');
+const langMenu = document.getElementById('lang-menu');
 const floatingControls = document.getElementById('floating-controls');
 const btnHelp = document.getElementById('btn-help');
 const helpTooltip = document.getElementById('help-tooltip');
@@ -62,10 +66,15 @@ const levelButtons = Array.from(document.querySelectorAll('.level-btn'));
 const btnBadgesEntry = document.getElementById('btn-badges-entry');
 const badgesDialog = document.getElementById('rewards-dialog');
 const btnCloseBadges = document.getElementById('btn-close-badges');
+
+const btnTutorialEntry = document.getElementById('btn-tutorial-entry');
+const tutorialDialog = document.getElementById('tutorial-dialog');
+const btnCloseTutorial = document.getElementById('btn-close-tutorial');
 const badgesGrid = document.getElementById('rewards-grid');
 
 const camera = new CameraService();
 const pose = new PoseService();
+const hand = new HandService();
 const faceMesh = new FaceMeshService();
 
 let sceneManager = null;
@@ -89,39 +98,12 @@ const filters = Array.from({ length: 33 }, () => ({
   z: new EMAFilter(0.85)
 }));
 
-const FACE_MESH_POINTS = {
-  NOSE: [1, 4],
-  LEFT_EYE: [362, 385, 387, 263, 373, 380],
-  RIGHT_EYE: [33, 160, 158, 133, 153, 144],
-  LEFT_FACE_SIDE: [454, 323, 356],
-  RIGHT_FACE_SIDE: [234, 93, 127],
-  LEFT_MOUTH: [291, 308, 415],
-  RIGHT_MOUTH: [61, 78, 191],
-};
-
-const FACE_TARGET_REFINEMENTS = {
-  nose: [{ poseIndex: 0, faceIndices: FACE_MESH_POINTS.NOSE }],
-  left_eye: [{ poseIndex: 2, faceIndices: FACE_MESH_POINTS.LEFT_EYE }],
-  right_eye: [{ poseIndex: 5, faceIndices: FACE_MESH_POINTS.RIGHT_EYE }],
-  left_ear: [{ poseIndex: 7, faceIndices: FACE_MESH_POINTS.LEFT_FACE_SIDE }],
-  right_ear: [{ poseIndex: 8, faceIndices: FACE_MESH_POINTS.RIGHT_FACE_SIDE }],
-  mouth: [
-    { poseIndex: 9, faceIndices: FACE_MESH_POINTS.LEFT_MOUTH },
-    { poseIndex: 10, faceIndices: FACE_MESH_POINTS.RIGHT_MOUTH },
-  ],
-};
-
-const FACE_TO_POSE_ANCHORS = [
-  { poseIndex: 0, faceIndices: FACE_MESH_POINTS.NOSE },
-  { poseIndex: 2, faceIndices: FACE_MESH_POINTS.LEFT_EYE },
-  { poseIndex: 5, faceIndices: FACE_MESH_POINTS.RIGHT_EYE },
-  { poseIndex: 7, faceIndices: FACE_MESH_POINTS.LEFT_FACE_SIDE },
-  { poseIndex: 8, faceIndices: FACE_MESH_POINTS.RIGHT_FACE_SIDE },
-  { poseIndex: 9, faceIndices: FACE_MESH_POINTS.LEFT_MOUTH },
-  { poseIndex: 10, faceIndices: FACE_MESH_POINTS.RIGHT_MOUTH },
-];
-
-const FACE_TARGET_IDS = new Set(Object.keys(FACE_TARGET_REFINEMENTS));
+// Which questions target a face part. The Face Landmarker only runs for these,
+// since it gives the precise nose/eye/ear/mouth points. The index mapping lives
+// in hitValidator.js.
+const FACE_TARGET_IDS = new Set([
+  'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear', 'mouth',
+]);
 const FACE_RESULT_TTL_MS = 250;
 
 function resetFilters() {
@@ -132,11 +114,13 @@ function resetFilters() {
   }
 }
 
-/** @type {Array|null} */
-let latestLandmarks = null;
-/** @type {Array|null} */
-let latestPoseLandmarks = null;
-/** @type {Array|null} */
+/** @type {Array|null} 33 normalized image landmarks, the recognition targets. */
+let latestPoseImage = null;
+/** @type {Array|null} 33 smoothed world landmarks, for the on-screen skeleton. */
+let latestPoseWorld = null;
+/** @type {Array} per-hand arrays of 21 image landmarks, the fingertips. */
+let latestHands = [];
+/** @type {Array|null} face-mesh landmarks (image space) while a face target is active. */
 let latestFaceLandmarks = null;
 let latestFaceTargetId = null;
 let latestFaceReceivedAt = 0;
@@ -268,6 +252,7 @@ function renderLanguageToggle(lang) {
   if (btn) btn.textContent = lang.toUpperCase();
   translateDOM();
   langToggle.setAttribute('aria-label', i18n.t('ui.aria_switch_language', lang.toUpperCase()));
+  renderLanguageMenuActive();
   renderControlTranslations();
 }
 
@@ -326,16 +311,132 @@ function handleLocaleChange({ lang } = {}) {
   }
 }
 
-function handleLanguageToggleClick() {
-  void playClick();
-  const currentIndex = SUPPORTED_LOCALES.indexOf(i18n.getLocale());
-  const nextIndex = currentIndex >= 0
-    ? (currentIndex + 1) % SUPPORTED_LOCALES.length
-    : 0;
-  i18n.setLocale(SUPPORTED_LOCALES[nextIndex]);
+// Language picker
+// Instead of blindly cycling through languages on each tap, the globe opens a
+// small menu that shows every language by its native name. A child (or parent)
+// can see all options at once and tap the one they want.
+
+let languageMenuOpen = false;
+
+// Inline SVG flags, drawn by hand so they look the same on every OS. Flag emoji
+// don't (Windows just shows the letter pairs). Each value is only the coloured
+// bands; languageFlagMarkup() adds the rounded clip and border.
+const LANGUAGE_FLAG_BANDS = {
+  en: `<rect width="24" height="16" fill="#012169"/>
+       <path d="M0 0 24 16M24 0 0 16" stroke="#fff" stroke-width="3"/>
+       <path d="M0 0 24 16M24 0 0 16" stroke="#C8102E" stroke-width="1.4"/>
+       <rect x="9.5" width="5" height="16" fill="#fff"/><rect y="5.5" width="24" height="5" fill="#fff"/>
+       <rect x="10.7" width="2.6" height="16" fill="#C8102E"/><rect y="6.7" width="24" height="2.6" fill="#C8102E"/>`,
+  de: `<rect width="24" height="16" fill="#000"/>
+       <rect y="5.33" width="24" height="5.34" fill="#D00"/>
+       <rect y="10.67" width="24" height="5.33" fill="#FFCE00"/>`,
+  fr: `<rect width="24" height="16" fill="#fff"/>
+       <rect width="8" height="16" fill="#0055A4"/>
+       <rect x="16" width="8" height="16" fill="#EF4135"/>`,
+  es: `<rect width="24" height="16" fill="#F1BF00"/>
+       <rect width="24" height="4" fill="#AA151B"/>
+       <rect y="12" width="24" height="4" fill="#AA151B"/>`,
+  ru: `<rect width="24" height="16" fill="#fff"/>
+       <rect y="5.33" width="24" height="5.34" fill="#0039A6"/>
+       <rect y="10.67" width="24" height="5.33" fill="#D52B1E"/>`,
+};
+
+function languageFlagMarkup(locale) {
+  const bands = LANGUAGE_FLAG_BANDS[locale];
+  if (!bands) return '';
+  return `
+    <svg class="lang-flag" viewBox="0 0 24 16" aria-hidden="true" focusable="false">
+      <clipPath id="flag-${locale}"><rect width="24" height="16" rx="3"/></clipPath>
+      <g clip-path="url(#flag-${locale})">${bands}</g>
+      <rect x="0.5" y="0.5" width="23" height="15" rx="2.6" fill="none"
+            stroke="#17324D" stroke-opacity="0.35" stroke-width="1"/>
+    </svg>`;
 }
 
-// ── Pipeline Wiring ──
+function buildLanguageMenu() {
+  if (!langMenu) return;
+  langMenu.innerHTML = '';
+  for (const locale of SUPPORTED_LOCALES) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'lang-menu-item';
+    item.setAttribute('role', 'menuitemradio');
+    item.dataset.locale = locale;
+    item.innerHTML = `
+      ${languageFlagMarkup(locale)}
+      <span class="lang-menu-code" aria-hidden="true">${locale.toUpperCase()}</span>
+      <span class="lang-menu-name">${LANGUAGE_NAMES[locale] || locale.toUpperCase()}</span>
+      <svg class="ui-icon lang-menu-check" aria-hidden="true" focusable="false"><use href="#icon-check"></use></svg>
+    `;
+    item.addEventListener('click', () => selectLanguage(locale));
+    langMenu.appendChild(item);
+  }
+  renderLanguageMenuActive();
+}
+
+function renderLanguageMenuActive() {
+  if (!langMenu) return;
+  const current = i18n.getLocale();
+  for (const item of langMenu.querySelectorAll('.lang-menu-item')) {
+    const locale = item.dataset.locale;
+    item.setAttribute('aria-checked', String(locale === current));
+    item.setAttribute('aria-label', LANGUAGE_NAMES[locale] || locale.toUpperCase());
+  }
+}
+
+function openLanguageMenu() {
+  if (!langMenu || !langToggle || languageMenuOpen) return;
+  languageMenuOpen = true;
+  langMenu.classList.remove('hidden');
+  langToggle.setAttribute('aria-expanded', 'true');
+  // Dismiss when tapping elsewhere or pressing Escape.
+  document.addEventListener('pointerdown', handleLanguageOutsidePointer, true);
+  document.addEventListener('keydown', handleLanguageMenuKeydown, true);
+  const activeItem = langMenu.querySelector('.lang-menu-item[aria-checked="true"]')
+    || langMenu.querySelector('.lang-menu-item');
+  activeItem?.focus({ preventScroll: true });
+}
+
+function closeLanguageMenu({ focusToggle = false } = {}) {
+  if (!langMenu || !languageMenuOpen) return;
+  languageMenuOpen = false;
+  langMenu.classList.add('hidden');
+  langToggle?.setAttribute('aria-expanded', 'false');
+  document.removeEventListener('pointerdown', handleLanguageOutsidePointer, true);
+  document.removeEventListener('keydown', handleLanguageMenuKeydown, true);
+  if (focusToggle) langToggle?.focus({ preventScroll: true });
+}
+
+function handleLanguageToggleClick() {
+  if (languageMenuOpen) {
+    closeLanguageMenu();
+    return;
+  }
+  void playClick();
+  openLanguageMenu();
+}
+
+function selectLanguage(locale) {
+  closeLanguageMenu({ focusToggle: true });
+  if (locale === i18n.getLocale()) return;
+  void playClick();
+  i18n.setLocale(locale);
+}
+
+function handleLanguageOutsidePointer(event) {
+  if (!langMenu?.contains(event.target) && !langToggle?.contains(event.target)) {
+    closeLanguageMenu();
+  }
+}
+
+function handleLanguageMenuKeydown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeLanguageMenu({ focusToggle: true });
+  }
+}
+
+// Pipeline wiring
 
 let lightingAnalyzer = null;
 let lightingChecked = false;
@@ -393,41 +494,26 @@ function shouldRunFaceMeshForTarget(targetId) {
   return Boolean(targetId && activeFaceTargetId === targetId && faceMesh.isReady);
 }
 
+// The original bitmap is transferred to the pose worker, so the hand worker
+// (and the face worker, when a face target is active) each need their own copy,
+// cloned from the video element or the source bitmap.
 function routeFrameToPerception(bitmap, timestamp) {
-  if (!shouldRunFaceMeshForTarget(activeFaceTargetId)) {
-    pose.sendFrame(bitmap, timestamp);
-    return;
-  }
-
-  const targetId = activeFaceTargetId;
   const video = camera.videoElement;
+  const faceTargetId = shouldRunFaceMeshForTarget(activeFaceTargetId) ? activeFaceTargetId : null;
+  const source = (video && video.readyState >= 2) ? video : bitmap;
 
-  if (video && video.readyState >= 2) {
-    sendFaceFrameWhenReady(createImageBitmap(video), timestamp, targetId);
-    pose.sendFrame(bitmap, timestamp);
-    return;
+  createImageBitmap(source)
+    .then((handBitmap) => hand.sendFrame(handBitmap, timestamp))
+    .catch(() => {});
+
+  if (faceTargetId) {
+    createImageBitmap(source)
+      .then((faceBitmap) => sendFaceBitmap(faceBitmap, timestamp, faceTargetId))
+      .catch(() => {});
   }
 
-  // Send original bitmap to pose synchronously to maintain backpressure.
-  // Create a separate bitmap for FaceMesh from the original before it's neutered.
-  createImageBitmap(bitmap)
-    .then((faceBitmap) => {
-      sendFaceBitmap(faceBitmap, timestamp, targetId);
-    })
-    .catch((err) => {
-      console.warn('[main] FaceMesh bitmap clone failed; pose-only frame used.', err);
-    });
+  // Pose gets the original bitmap (zero-copy transfer keeps backpressure honest).
   pose.sendFrame(bitmap, timestamp);
-}
-
-function sendFaceFrameWhenReady(faceBitmapPromise, timestamp, targetId) {
-  faceBitmapPromise
-    .then((faceBitmap) => {
-      sendFaceBitmap(faceBitmap, timestamp, targetId);
-    })
-    .catch((err) => {
-      console.warn('[main] FaceMesh frame capture failed; using pose-only frame.', err);
-    });
 }
 
 function sendFaceBitmap(faceBitmap, timestamp, targetId) {
@@ -438,44 +524,29 @@ function sendFaceBitmap(faceBitmap, timestamp, targetId) {
   }
 }
 
-function clearTrackedLandmarks() {
-  latestLandmarks = null;
-  latestPoseLandmarks = null;
-  latestFaceLandmarks = null;
-  latestFaceTargetId = null;
-  latestFaceReceivedAt = 0;
+function clearPose() {
+  latestPoseImage = null;
+  latestPoseWorld = null;
   resetFilters();
-
-  if (gameEngine) {
-    gameEngine.update(null);
-  }
+  runRecognition(); // empty frame, so the hold detector decays
 }
 
-function updatePoseLandmarks(rawLandmarks) {
-  latestPoseLandmarks = rawLandmarks.map((pt, idx) => ({
+function updatePoseResult(imageLandmarks, worldLandmarks) {
+  latestPoseImage = imageLandmarks;
+  // Smooth the world landmarks so the on-screen skeleton stays steady. Only the
+  // scene uses these; recognition uses the raw (already video-smoothed) image
+  // landmarks and hand fingertips.
+  latestPoseWorld = worldLandmarks.map((pt, idx) => ({
     x: filters[idx].x.update(pt.x),
     y: filters[idx].y.update(pt.y),
     z: filters[idx].z.update(pt.z),
     visibility: pt.visibility,
-    presence: pt.presence
+    presence: pt.presence,
   }));
-
-  latestLandmarks = buildGameLandmarks(latestPoseLandmarks);
-
-  if (gameEngine) {
-    gameEngine.update(latestLandmarks);
-  }
+  runRecognition();
 }
 
-function buildGameLandmarks(poseLandmarks) {
-  if (!poseLandmarks || !hasFreshFaceTarget()) {
-    return poseLandmarks;
-  }
-
-  return refineFaceTargetLandmarks(poseLandmarks, latestFaceLandmarks, activeFaceTargetId) ?? poseLandmarks;
-}
-
-function hasFreshFaceTarget() {
+function hasFreshFace() {
   return Boolean(
     activeFaceTargetId &&
     latestFaceTargetId === activeFaceTargetId &&
@@ -484,152 +555,16 @@ function hasFreshFaceTarget() {
   );
 }
 
-function refineFaceTargetLandmarks(poseLandmarks, faceLandmarks, targetId) {
-  const refinements = FACE_TARGET_REFINEMENTS[targetId];
-  if (!refinements || !faceLandmarks) return null;
-
-  const transform = createFaceToPoseTransform(faceLandmarks, poseLandmarks);
-  if (!transform) return null;
-
-  const refined = poseLandmarks.map((landmark) => (
-    landmark ? { ...landmark } : landmark
-  ));
-
-  let applied = false;
-  for (const refinement of refinements) {
-    const facePoint = averageFacePoint(faceLandmarks, refinement.faceIndices);
-    if (!facePoint || !refined[refinement.poseIndex]) continue;
-
-    const projected = transform(facePoint);
-    refined[refinement.poseIndex] = {
-      ...refined[refinement.poseIndex],
-      ...projected,
-      visibility: Math.max(refined[refinement.poseIndex].visibility ?? 0, 0.95),
-      presence: Math.max(refined[refinement.poseIndex].presence ?? 0, 0.95),
-      source: 'facemesh',
-    };
-    applied = true;
-  }
-
-  return applied ? refined : null;
-}
-
-function createFaceToPoseTransform(faceLandmarks, poseLandmarks) {
-  const pairs = [];
-
-  for (const anchor of FACE_TO_POSE_ANCHORS) {
-    const source = averageFacePoint(faceLandmarks, anchor.faceIndices);
-    const target = poseLandmarks[anchor.poseIndex];
-    if (source && isValidLandmark(target)) {
-      pairs.push({ source, target });
-    }
-  }
-
-  if (pairs.length < 3) return null;
-
-  const xCoefficients = solveAffineAxis(pairs, 'x');
-  const yCoefficients = solveAffineAxis(pairs, 'y');
-  const zCoefficients = solveAffineAxis(pairs, 'z');
-
-  if (!xCoefficients || !yCoefficients || !zCoefficients) return null;
-
-  return (point) => ({
-    x: applyAffine(xCoefficients, point),
-    y: applyAffine(yCoefficients, point),
-    z: applyAffine(zCoefficients, point),
+// Assemble the latest pose / hands / face into one snapshot and hand it to the
+// game engine. Pose-clocked (called on each pose result), with a fast extra
+// pass on fresh hand/face results while actively detecting.
+function runRecognition() {
+  if (!gameEngine) return;
+  gameEngine.update({
+    pose: latestPoseImage,
+    hands: latestHands,
+    face: hasFreshFace() ? latestFaceLandmarks : null,
   });
-}
-
-function averageFacePoint(faceLandmarks, indices) {
-  let x = 0;
-  let y = 0;
-  let z = 0;
-  let count = 0;
-
-  for (const index of indices) {
-    const landmark = faceLandmarks[index];
-    if (!isValidFaceLandmark(landmark)) continue;
-
-    x += landmark.x;
-    y += landmark.y;
-    z += landmark.z ?? 0;
-    count++;
-  }
-
-  return count > 0 ? { x: x / count, y: y / count, z: z / count } : null;
-}
-
-function solveAffineAxis(pairs, axis) {
-  let sumXX = 0;
-  let sumXY = 0;
-  let sumX = 0;
-  let sumYY = 0;
-  let sumY = 0;
-  let sumXV = 0;
-  let sumYV = 0;
-  let sumV = 0;
-
-  for (const { source, target } of pairs) {
-    const x = source.x;
-    const y = source.y;
-    const value = target[axis];
-
-    sumXX += x * x;
-    sumXY += x * y;
-    sumX += x;
-    sumYY += y * y;
-    sumY += y;
-    sumXV += x * value;
-    sumYV += y * value;
-    sumV += value;
-  }
-
-  return solve3x3(
-    [
-      [sumXX, sumXY, sumX],
-      [sumXY, sumYY, sumY],
-      [sumX, sumY, pairs.length],
-    ],
-    [sumXV, sumYV, sumV]
-  );
-}
-
-function solve3x3(matrix, rhs) {
-  const determinant = det3(matrix);
-  if (Math.abs(determinant) < 1e-8) return null;
-
-  return [0, 1, 2].map((column) => {
-    const replaced = matrix.map((row, rowIndex) => (
-      row.map((value, colIndex) => (colIndex === column ? rhs[rowIndex] : value))
-    ));
-    return det3(replaced) / determinant;
-  });
-}
-
-function det3(matrix) {
-  const [[a, b, c], [d, e, f], [g, h, i]] = matrix;
-  return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
-}
-
-function applyAffine(coefficients, point) {
-  return coefficients[0] * point.x + coefficients[1] * point.y + coefficients[2];
-}
-
-function isValidLandmark(landmark) {
-  return Boolean(
-    landmark &&
-    Number.isFinite(landmark.x) &&
-    Number.isFinite(landmark.y) &&
-    Number.isFinite(landmark.z)
-  );
-}
-
-function isValidFaceLandmark(landmark) {
-  return Boolean(
-    landmark &&
-    Number.isFinite(landmark.x) &&
-    Number.isFinite(landmark.y)
-  );
 }
 
 camera.onFrame(({ bitmap, timestamp }) => {
@@ -653,26 +588,34 @@ camera.onFrame(({ bitmap, timestamp }) => {
   routeFrameToPerception(bitmap, timestamp);
 });
 
-pose.onResult((worldLandmarks) => {
+pose.onResult(({ landmarks, worldLandmarks }) => {
   if (!isPipelineActive || sessionPaused) return;
-  if (worldLandmarks && worldLandmarks.length > 0) {
+  const image = landmarks?.[0];
+  const world = worldLandmarks?.[0];
+  if (image && image.length >= 33 && world && world.length >= 33) {
     if (!firstFrameReceived) {
       firstFrameReceived = true;
       eventBus.emit('pipeline:ready');
     }
-    const lm = worldLandmarks[0];
-    if (lm && lm.length >= 33) {
-      updatePoseLandmarks(lm);
-    } else {
-      clearTrackedLandmarks();
-    }
+    updatePoseResult(image, world);
   } else {
-    clearTrackedLandmarks();
+    clearPose();
   }
 });
 
 pose.onError((msg) => {
   console.error(`[PoseService Error] ${msg}`);
+});
+
+hand.onResult(({ landmarks }) => {
+  if (!isPipelineActive || sessionPaused) return;
+  latestHands = landmarks ?? [];
+  // A fresh fingertip mid-touch: re-run recognition immediately for responsiveness.
+  if (isDetectionActive) runRecognition();
+});
+
+hand.onError((msg) => {
+  console.error(`[HandService Error] ${msg}`);
 });
 
 faceMesh.onResult(({ faceLandmarks, targetId }) => {
@@ -683,19 +626,14 @@ faceMesh.onResult(({ faceLandmarks, targetId }) => {
   latestFaceTargetId = targetId;
   latestFaceReceivedAt = performance.now();
 
-  if (latestPoseLandmarks) {
-    latestLandmarks = buildGameLandmarks(latestPoseLandmarks);
-    if (isDetectionActive && gameEngine) {
-      gameEngine.update(latestLandmarks);
-    }
-  }
+  if (isDetectionActive) runRecognition();
 });
 
 faceMesh.onError((msg) => {
   console.error(`[FaceMeshService Error] ${msg}`);
 });
 
-// ── Render Loop ──
+// Render loop
 
 let frameCount = 0;
 let lastFpsTime = performance.now();
@@ -715,14 +653,14 @@ function renderLoop() {
   if (gameEngine && sceneManager) {
     const distance = gameEngine.currentDistance;
     const threshold = gameEngine.dynamicThreshold;
-    sceneManager.update(latestLandmarks, distance, threshold);
+    sceneManager.update(latestPoseWorld, distance, threshold);
   }
 
   frameCount++;
   const now = performance.now();
   if (now - lastFpsTime >= 1000) {
     if (fpsDisplay) {
-      fpsDisplay.textContent = `FPS: ${frameCount} | Pose Drops: ${pose.droppedFrames} | Face Drops: ${faceMesh.droppedFrames}`;
+      fpsDisplay.textContent = `FPS: ${frameCount} | Pose Drops: ${pose.droppedFrames} | Hand Drops: ${hand.droppedFrames} | Face Drops: ${faceMesh.droppedFrames}`;
     }
     frameCount = 0;
     lastFpsTime = now;
@@ -742,7 +680,7 @@ function stopRenderLoop() {
   animationFrameId = null;
 }
 
-// ── Event Bus Wiring ──
+// Event bus wiring
 let eventBusInitialized = false;
 
 function setupEventBus() {
@@ -865,9 +803,46 @@ function setupEventBus() {
 
   eventBus.on('game:stateChange', ({ state }) => {
     isDetectionActive = state === 'playing';
-    if (state === 'idle') {
+    if (state === 'playing') {
+      // Signal that it is now the child's turn to point (distinct "go" cue).
+      void playYourTurn();
+    } else if (state === 'idle') {
       deactivateFaceMesh();
       stopBackgroundMusic();
+    }
+  });
+
+  // Gentle correction when a child parks a hand on the wrong part. No score or
+  // state change here, just a soft cue and the prompt spoken again for the right
+  // part, throttled so it never nags.
+  let lastWrongPartAt = 0;
+  eventBus.on('detection:wrongPart', ({ askedId } = {}) => {
+    const now = performance.now();
+    if (now - lastWrongPartAt < 2000) return;
+    lastWrongPartAt = now;
+    void playSoftNudge();
+    const question = gameEngine?.currentQuestion;
+    if (question && question.id === askedId
+      && gameEngine.currentState === 'DETECTING' && !isMuted()) {
+      speakKey(question.eduKey).catch((err) => console.error('Wrong-part prompt error:', err));
+    }
+  });
+
+  // Tap-to-hear-again: replay the current question's narration on demand.
+  eventBus.on('ui:replayNarration', () => {
+    const question = gameEngine?.currentQuestion;
+    if (!question || gameEngine.isDisposed || sessionPaused) return;
+    const state = gameEngine.currentState;
+    if (state !== 'INSTRUCTION' && state !== 'DETECTING') return;
+
+    void playClick();
+    if (state === 'INSTRUCTION') {
+      // Still in the narration phase: use the proper replay path so the
+      // instruction-complete timing stays correct.
+      eventBus.emit('game:replayQuestion', { question });
+    } else {
+      // Child is already pointing: just replay the prompt audio.
+      speakKey(question.eduKey).catch((err) => console.error('Replay narration error:', err));
     }
   });
 }
@@ -978,8 +953,9 @@ function returnToHome() {
     canvasContainer.innerHTML = '';
     hudContainer.innerHTML = '';
 
-    latestLandmarks = null;
-    latestPoseLandmarks = null;
+    latestPoseImage = null;
+    latestPoseWorld = null;
+    latestHands = [];
     latestFaceLandmarks = null;
     latestFaceTargetId = null;
     latestFaceReceivedAt = 0;
@@ -1014,7 +990,7 @@ function returnToHome() {
   }
 }
 
-// ── Boot Sequence ──
+// Boot sequence
 
 async function startPipeline(startingLevel = DEFAULT_STARTING_LEVEL, audioReadyPromise = null) {
   if (pipelineStarting || isPipelineActive) return;
@@ -1037,7 +1013,11 @@ async function startPipeline(startingLevel = DEFAULT_STARTING_LEVEL, audioReadyP
     await camera.start();
 
     setStatusKey('ui.loading_pose');
-    if (!pose.isReady) await pose.init();
+    // Pose (body targets) and Hand (fingertips) load in parallel.
+    await Promise.all([
+      pose.isReady ? Promise.resolve() : pose.init(),
+      hand.isReady ? Promise.resolve() : hand.init(),
+    ]);
 
     setStatusKey('ui.loading_audio');
     try {
@@ -1161,6 +1141,7 @@ exitConfirmDialog?.addEventListener('cancel', (event) => {
   cancelExitConfirmation();
 });
 
+buildLanguageMenu();
 if (langToggle) {
   langToggle.addEventListener('click', handleLanguageToggleClick);
 }
@@ -1212,6 +1193,20 @@ if (btnCloseBadges && badgesDialog) {
   });
 }
 
+if (btnTutorialEntry && tutorialDialog) {
+  btnTutorialEntry.addEventListener('click', () => {
+    void playClick();
+    tutorialDialog.showModal();
+  });
+}
+
+if (btnCloseTutorial && tutorialDialog) {
+  btnCloseTutorial.addEventListener('click', () => {
+    void playClick();
+    tutorialDialog.close();
+  });
+}
+
 eventBus.on('badge:unlocked', ({ badge }) => {
   void playWellDone();
 
@@ -1241,7 +1236,7 @@ eventBus.on('badge:unlocked', ({ badge }) => {
   }, 4000);
 });
 
-// ── Cleanup on page unload ──
+// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
   if (langToggle) {
     langToggle.removeEventListener('click', handleLanguageToggleClick);
@@ -1252,6 +1247,7 @@ window.addEventListener('beforeunload', () => {
   gameEngine?.dispose();
   camera.stop();
   pose.destroy();
+  hand.destroy();
   faceMesh.destroy();
   disposeAudio();
   if (sceneManager) {
@@ -1263,7 +1259,7 @@ window.addEventListener('beforeunload', () => {
   disposeDebugControls?.();
 });
 
-// ── Service Worker Registration ──
+// Service worker registration
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(err => {

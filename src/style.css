@@ -4,12 +4,15 @@
 /* ============================================ */
 
 :root {
-  --color-airy-sky: #EEF7FA;
+  /* Colour tokens mirror src/core/palette.js (keep the two in sync). Tuned to
+     child-development research: cool blue base, saturated accents, warm amber/
+     coral for rewards and primary buttons. Contrast checked (navy on each >= 4.5). */
+  --color-airy-sky: #E1F1FF;
   --color-explorer-navy: #17324D;
   --color-adventure-green: #2C7A4B;
-  --color-gentle-leaf: #B8DFC4;
-  --color-sunny-apricot: #F2C486;
-  --color-friendly-coral: #E9A3A0;
+  --color-gentle-leaf: #86DDA9;
+  --color-sunny-apricot: #FFB23E;
+  --color-friendly-coral: #FA6E5A;
 
   --glass-bg: color-mix(in srgb, var(--color-airy-sky) 92%, transparent);
   --glass-border: var(--color-explorer-navy);
@@ -300,24 +303,37 @@ button {
   --level-background: var(--color-friendly-coral);
 }
 
-.level-icon {
-  display: block;
-  width: 2.25rem;
-  height: 2.25rem;
+/* Difficulty is shown as 1/2/3 clean SVG stars (transparent, on-palette) instead
+   of a bitmap icon, so there is no opaque square behind the artwork. */
+.level-stars {
+  display: inline-flex;
+  gap: 0.2rem;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  object-fit: contain;
   pointer-events: none;
-  filter: drop-shadow(0 2px 1px color-mix(in srgb, var(--color-explorer-navy) 24%, transparent));
   transform: translateY(0) scale(1);
-  transition: transform 180ms var(--transition-bounce), filter 180ms ease;
+  transition: transform 180ms var(--transition-bounce);
 }
 
-.level-btn.active .level-icon {
-  filter: drop-shadow(0 3px 2px var(--level-glow));
+.level-star {
+  width: 1.5rem;
+  height: 1.5rem;
+  --icon-fill: var(--color-airy-sky);
+  color: var(--color-explorer-navy);
+  filter: drop-shadow(0 2px 1px color-mix(in srgb, var(--color-explorer-navy) 24%, transparent));
+  transition: filter 180ms ease;
+}
+
+.level-btn.active .level-stars {
   transform: translateY(-1px) scale(1.08);
 }
 
-.level-btn:hover:not(:disabled):not(.active) .level-icon {
+.level-btn.active .level-star {
+  filter: drop-shadow(0 3px 2px var(--level-glow));
+}
+
+.level-btn:hover:not(:disabled):not(.active) .level-stars {
   transform: translateY(-1px) scale(1.04);
 }
 
@@ -459,9 +475,11 @@ button {
   overflow: hidden;
   border: 3px solid var(--color-explorer-navy);
   border-radius: var(--radius-xl);
-  background: var(--color-adventure-green);
-  color: var(--color-airy-sky);
-  box-shadow: 0 8px 0 var(--color-explorer-navy), 0 12px 30px color-mix(in srgb, var(--color-adventure-green) 42%, transparent);
+  /* Warm amber primary button (child-development colour research: warm colours
+     for rewards/buttons). Navy text keeps a 7.3:1 contrast ratio. */
+  background: var(--color-sunny-apricot);
+  color: var(--color-explorer-navy);
+  box-shadow: 0 8px 0 var(--color-explorer-navy), 0 12px 30px color-mix(in srgb, var(--color-sunny-apricot) 46%, transparent);
   cursor: pointer;
   font-family: var(--font-display);
   font-size: 1.25rem;
@@ -525,13 +543,13 @@ button {
 .btn-start:hover,
 .interactive-btn:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 0 var(--color-explorer-navy), 0 16px 40px color-mix(in srgb, var(--color-adventure-green) 48%, transparent);
+  box-shadow: 0 12px 0 var(--color-explorer-navy), 0 16px 40px color-mix(in srgb, var(--color-sunny-apricot) 52%, transparent);
 }
 
 .btn-start:active,
 .interactive-btn:active {
   transform: translateY(4px);
-  box-shadow: 0 4px 0 var(--color-explorer-navy), 0 6px 20px color-mix(in srgb, var(--color-adventure-green) 38%, transparent);
+  box-shadow: 0 4px 0 var(--color-explorer-navy), 0 6px 20px color-mix(in srgb, var(--color-sunny-apricot) 42%, transparent);
 }
 
 .btn-start:focus-visible,
@@ -603,7 +621,10 @@ button {
 #video-container {
   z-index: 1;
   background: var(--color-airy-sky);
-  box-shadow: var(--shadow-heavy);
+  /* Soft warm halo so the live camera frame feels inviting, not clinical. */
+  box-shadow:
+    var(--shadow-heavy),
+    0 0 44px color-mix(in srgb, var(--color-sunny-apricot) 26%, transparent);
   transform: scaleX(-1);
 }
 
@@ -614,7 +635,8 @@ button {
   border: 4px solid var(--color-explorer-navy);
   border-radius: var(--radius-lg);
   pointer-events: none;
-  box-shadow: inset 0 0 60px color-mix(in srgb, var(--color-explorer-navy) 22%, transparent);
+  /* Gentle vignette — draws the eye to the child in the centre without a heavy dark edge. */
+  box-shadow: inset 0 0 46px color-mix(in srgb, var(--color-explorer-navy) 13%, transparent);
 }
 
 #video-container video {
@@ -638,7 +660,23 @@ button {
   pointer-events: none;
 }
 
+/* Readability scrims: gentle darkening at the top and bottom so the score pills,
+   instruction, and hold bar stay legible over any camera background. The centre
+   (where the child is) stays fully clear. */
+#hud-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-explorer-navy) 28%, transparent), transparent 20%),
+    linear-gradient(to top, color-mix(in srgb, var(--color-explorer-navy) 32%, transparent), transparent 24%);
+}
+
 #hud-overlay > * {
+  position: relative; /* keep HUD content above the scrim */
   pointer-events: auto;
 }
 
@@ -673,11 +711,11 @@ button {
 
 .hud-pill {
   display: flex;
-  min-width: 100px;
+  min-width: 110px;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1.2rem;
+  gap: 0.55rem;
+  padding: 0.7rem 1.4rem;
   border: 2px solid var(--glass-border);
   border-bottom-width: 3px;
   border-radius: var(--radius-pill);
@@ -693,13 +731,13 @@ button {
 
 .hud-icon {
   display: block;
-  width: 1.3rem;
-  height: 1.3rem;
+  width: 1.55rem;
+  height: 1.55rem;
   filter: drop-shadow(0 2px 2px color-mix(in srgb, var(--color-explorer-navy) 18%, transparent));
 }
 
 .hud-label {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   font-weight: 800;
   opacity: 0.92;
   text-transform: uppercase;
@@ -708,9 +746,18 @@ button {
 .hud-value {
   color: var(--color-explorer-navy);
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.6rem;
   font-weight: 900;
   text-shadow: none;
+}
+
+/* The timer is the most time-critical number, so it is the biggest. */
+.hud-timer {
+  min-width: 124px;
+}
+
+.hud-timer-value {
+  font-size: 2rem;
 }
 
 .hud-level,
@@ -749,6 +796,18 @@ button {
   animation: instructionPop 600ms var(--transition-bounce) both;
 }
 
+/* Gentle attention wiggle when the child touches the wrong part (non-punishing). */
+.instruction-panel.nudge {
+  animation: instructionNudge 600ms var(--transition-smooth);
+}
+
+@keyframes instructionNudge {
+  0%, 100% { transform: translateX(-50%) rotate(0); }
+  20% { transform: translateX(-53%) rotate(-2deg); }
+  50% { transform: translateX(-47%) rotate(2deg); }
+  80% { transform: translateX(-51%) rotate(-1deg); }
+}
+
 .instruction-glow {
   position: absolute;
   inset: -2px;
@@ -785,11 +844,51 @@ button {
 .instruction-text {
   color: var(--color-explorer-navy);
   font-family: var(--font-display);
-  font-size: clamp(1.05rem, 2.5vw, 1.25rem);
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
   font-weight: 900;
   line-height: 1.2;
   overflow-wrap: anywhere;
   text-shadow: none;
+}
+
+/* Tap-to-hear-again button inside the instruction panel. Large round target
+   for small fingers; icon-only so it needs no reading. */
+.hud-replay-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 2px solid var(--color-explorer-navy);
+  border-radius: 50%;
+  background: var(--color-gentle-leaf);
+  color: var(--color-explorer-navy);
+  box-shadow: 0 3px 0 var(--color-explorer-navy);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 150ms var(--transition-bounce), background 150ms ease;
+}
+
+.hud-replay-btn .ui-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.hud-replay-btn:hover {
+  background: var(--color-sunny-apricot);
+  transform: translateY(-2px);
+}
+
+.hud-replay-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--color-explorer-navy);
+}
+
+.hud-replay-btn:focus-visible {
+  outline: 3px solid var(--color-explorer-navy);
+  outline-offset: 3px;
 }
 
 .instruction-arrow {
@@ -1130,8 +1229,8 @@ button {
 }
 
 .btn-restart {
-  background: var(--color-adventure-green);
-  color: var(--color-airy-sky);
+  background: var(--color-sunny-apricot);
+  color: var(--color-explorer-navy);
 }
 
 @keyframes modalSlideUp {
@@ -1198,6 +1297,103 @@ button {
   color: var(--color-explorer-navy);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--color-explorer-navy) 15%, transparent);
   text-shadow: none;
+}
+
+/* ---- Language picker popup ---- */
+.lang-picker {
+  position: relative;
+}
+
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: max-content;
+  min-width: 11rem;
+  padding: 0.5rem;
+  border: 3px solid var(--color-explorer-navy);
+  border-radius: var(--radius-md);
+  background: var(--color-airy-sky);
+  box-shadow: var(--shadow-heavy);
+  animation: tooltipSlide 200ms var(--transition-bounce) both;
+}
+
+/* In-game the controls sit at the bottom, so open the menu upward instead. */
+#floating-controls.in-game .lang-menu {
+  top: auto;
+  bottom: calc(100% + 0.5rem);
+}
+
+.lang-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-explorer-navy);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  text-align: left;
+  transition: background 150ms ease, transform 150ms var(--transition-bounce);
+}
+
+.lang-menu-item:hover {
+  background: var(--color-gentle-leaf);
+}
+
+.lang-menu-item:active {
+  transform: scale(0.97);
+}
+
+.lang-menu-item:focus-visible {
+  outline: 3px solid var(--color-explorer-navy);
+  outline-offset: 2px;
+}
+
+.lang-menu-item[aria-checked="true"] {
+  background: var(--color-gentle-leaf);
+  border-color: var(--color-explorer-navy);
+}
+
+/* Rounded flag icon shown at the start of each language option. */
+.lang-flag {
+  display: block;
+  width: 1.6rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+}
+
+/* Small round badge showing the two-letter code beside the native name. */
+.lang-menu-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  padding: 0.15rem 0.4rem;
+  border: 2px solid var(--color-explorer-navy);
+  border-radius: var(--radius-pill);
+  background: var(--color-airy-sky);
+  font-size: 0.8rem;
+}
+
+.lang-menu-check {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: auto;
+  color: var(--color-adventure-green);
+}
+
+.lang-menu-item[aria-checked="false"] .lang-menu-check {
+  visibility: hidden;
 }
 
 .control-btn {
@@ -1506,7 +1702,7 @@ button {
   }
 
   .instruction-text {
-    font-size: 1.0rem;
+    font-size: 1.2rem;
   }
 
   .modal-stats {
@@ -1562,9 +1758,9 @@ button {
     border-width: 2px;
   }
 
-  .level-icon {
-    width: 1.875rem;
-    height: 1.875rem;
+  .level-star {
+    width: 1.3rem;
+    height: 1.3rem;
   }
 
   .level-name {
@@ -1572,7 +1768,11 @@ button {
   }
 
   .hud-value {
-    font-size: 1rem;
+    font-size: 1.25rem;
+  }
+
+  .hud-timer-value {
+    font-size: 1.65rem;
   }
 
   .game-layer {
@@ -1988,5 +2188,201 @@ button {
   
   .badge-desc {
     font-size: 0.7rem;
+  }
+}
+
+/* ============================================ */
+/* TUTORIAL ("HOW TO PLAY")                     */
+/* ============================================ */
+
+.btn-tutorial-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: min(100%, 22rem);
+  min-height: 3.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  border: 3px solid var(--color-explorer-navy);
+  border-radius: var(--radius-xl);
+  background: var(--color-airy-sky);
+  color: var(--color-explorer-navy);
+  box-shadow: 0 5px 0 var(--color-explorer-navy), var(--shadow-soft);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 150ms var(--transition-bounce), box-shadow 150ms ease, background-color 200ms;
+}
+
+.btn-tutorial-entry:hover {
+  background-color: var(--color-gentle-leaf);
+  transform: translateY(-2px);
+}
+
+.btn-tutorial-entry:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--color-explorer-navy);
+}
+
+.btn-tutorial-entry .ui-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.tutorial-dialog {
+  width: min(calc(100vw - 2rem), 44rem);
+  max-width: none;
+  max-height: calc(100svh - 4rem);
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--color-explorer-navy);
+}
+
+.tutorial-dialog::backdrop {
+  background: color-mix(in srgb, var(--color-explorer-navy) 60%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.tutorial-dialog-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100svh - 4rem);
+  padding: 2.5rem 2rem 2rem;
+  overflow-y: auto;
+  border: 4px solid var(--color-explorer-navy);
+  border-radius: var(--radius-xl);
+  background: var(--color-airy-sky);
+  box-shadow: var(--shadow-heavy);
+  text-align: center;
+}
+
+.btn-close-tutorial {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--color-explorer-navy);
+  border-radius: 50%;
+  background: var(--color-friendly-coral);
+  box-shadow: 0 3px 0 var(--color-explorer-navy);
+  cursor: pointer;
+  transition: transform 150ms var(--transition-bounce);
+}
+
+.btn-close-tutorial:hover {
+  transform: scale(1.1) rotate(90deg);
+}
+
+.btn-close-tutorial:active {
+  transform: scale(0.95);
+  box-shadow: 0 1px 0 var(--color-explorer-navy);
+}
+
+.btn-close-tutorial .ui-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  color: var(--color-explorer-navy);
+}
+
+#tutorial-title {
+  margin-bottom: 1rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--color-explorer-navy);
+}
+
+.tutorial-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: min(100%, 34rem);
+  margin: 0 auto 1.25rem;
+  padding: 0.9rem 1.1rem;
+  list-style: none;
+  border: 2px solid var(--color-explorer-navy);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-gentle-leaf) 35%, var(--color-airy-sky));
+}
+
+.tutorial-rules li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--color-explorer-navy);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.tutorial-rule-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.tutorial-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.tutorial-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1rem 0.85rem;
+  border: 3px solid var(--color-explorer-navy);
+  border-radius: var(--radius-lg);
+  background: var(--color-airy-sky);
+  box-shadow: 0 4px 0 var(--color-explorer-navy);
+}
+
+.tutorial-card-icon {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.tutorial-card-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--color-explorer-navy);
+}
+
+.tutorial-card-desc {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--color-explorer-navy) 85%, transparent);
+}
+
+@media (max-width: 480px) {
+  .tutorial-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  #tutorial-title {
+    font-size: 1.7rem;
+  }
+
+  .tutorial-dialog-card {
+    padding: 2rem 1rem 1.5rem;
   }
 }

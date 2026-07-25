@@ -1,10 +1,6 @@
-/**
- * Layer 1: Input: Camera Service
- *
- * Acquires camera stream, captures frames as ImageBitmap using
- * requestVideoFrameCallback (Chromium) with requestAnimationFrame fallback.
- * All processing stays local: no frames leave the device.
- */
+// Opens the camera and grabs frames as ImageBitmap, using
+// requestVideoFrameCallback where it exists and falling back to
+// requestAnimationFrame. Everything stays local; no frame ever leaves the device.
 
 /** @typedef {{ bitmap: ImageBitmap, timestamp: number }} FrameData */
 

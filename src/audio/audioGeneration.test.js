@@ -3,10 +3,15 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
-import { AUDIO_KEYS, PIPER_MODELS } from '../../generate_edu_audio.js';
+import {
+  AUDIO_KEYS,
+  ENGINE_BY_LANG,
+  KOKORO_MODELS,
+  PIPER_MODELS,
+} from '../../generate_edu_audio.js';
 
-describe('Piper audio generation inventory', () => {
-  it('targets one approved native Piper model per locale', () => {
+describe('Audio generation inventory', () => {
+  it('keeps a native Piper voice available for every locale (fallback)', () => {
     expect(Object.keys(PIPER_MODELS)).toEqual(['en', 'de', 'fr', 'es', 'ru']);
     expect(PIPER_MODELS.en.voice).toBe('en_US-lessac-medium');
     expect(PIPER_MODELS.de.voice).toBe('de_DE-thorsten-medium');
@@ -14,6 +19,21 @@ describe('Piper audio generation inventory', () => {
     expect(PIPER_MODELS.es.voice).toBe('es_ES-sharvard-medium');
     expect(PIPER_MODELS.es.speaker).toBe(0);
     expect(PIPER_MODELS.ru.voice).toBe('ru_RU-denis-medium');
+  });
+
+  it('routes each locale to its chosen engine (Kokoro where strong, Piper elsewhere)', () => {
+    expect(ENGINE_BY_LANG).toEqual({
+      en: 'kokoro', es: 'kokoro', fr: 'kokoro', de: 'piper', ru: 'piper',
+    });
+    // Every Kokoro-routed locale has a configured voice + language code.
+    for (const [lang, engine] of Object.entries(ENGINE_BY_LANG)) {
+      if (engine === 'kokoro') {
+        expect(KOKORO_MODELS[lang]?.voice, `${lang} kokoro voice`).toBeTruthy();
+        expect(KOKORO_MODELS[lang]?.langCode, `${lang} kokoro langCode`).toBeTruthy();
+      } else {
+        expect(PIPER_MODELS[lang]?.voice, `${lang} piper voice`).toBeTruthy();
+      }
+    }
   });
 
   it('contains exactly 23 questions, 23 facts, and 9 spoken feedback phrases', () => {

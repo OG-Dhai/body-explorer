@@ -61,8 +61,11 @@ export class HUDOverlay {
       <div class="instruction-panel hud-instruction" role="region" aria-labelledby="hud-target">
         <div class="instruction-glow" aria-hidden="true"></div>
         <div class="instruction-content">
-          <img class="ui-icon instruction-emoji" src="/icons/icon-pointer.png" alt="" aria-hidden="true" draggable="false" />
+          <img class="ui-icon instruction-emoji" src="/icons/icon-pointer.png" alt="" aria-hidden="true" draggable="false" decoding="async" />
           <p class="instruction-text hud-instruction-text" id="hud-target">Touch your...</p>
+          <button class="hud-replay-btn" id="hud-replay" type="button" aria-label="Hear again">
+            <svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#icon-speaker-on"></use></svg>
+          </button>
         </div>
         <svg class="ui-icon instruction-arrow icon--apricot" aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg>
       </div>
@@ -88,6 +91,8 @@ export class HUDOverlay {
     this._streakEl = this._playingSection.querySelector('#hud-streak');
     this._holdBar = this._playingSection.querySelector('#hud-hold-bar');
     this._holdBarContainer = this._playingSection.querySelector('.hud-hold-bar-container');
+    this._instructionPanel = this._playingSection.querySelector('.instruction-panel');
+    this._nudgeTimer = null;
     this._feedbackEl = this._playingSection.querySelector('#hud-feedback');
     this._feedbackTitleEl = this._playingSection.querySelector('#hud-feedback-title');
     this._feedbackSubEl = this._playingSection.querySelector('.feedback-sub');
@@ -174,11 +179,20 @@ export class HUDOverlay {
     this._onGamePauseChange = this._onGamePauseChange.bind(this);
     this._onI18nChange = this._onI18nChange.bind(this);
     this._onRestartClick = this._onRestartClick.bind(this);
+    this._onWrongPart = this._onWrongPart.bind(this);
 
     const btnRestart = this._victorySection.querySelector('#btn-restart');
     if (btnRestart) {
       this._btnRestart = btnRestart;
       this._btnRestart.addEventListener('click', this._onRestartClick);
+    }
+
+    // Tap-to-hear-again: ask the app to replay the current question narration.
+    const btnReplay = this._playingSection.querySelector('#hud-replay');
+    if (btnReplay) {
+      this._btnReplay = btnReplay;
+      this._onReplayClick = () => eventBus.emit('ui:replayNarration');
+      this._btnReplay.addEventListener('click', this._onReplayClick);
     }
 
     this._bindEvents();
@@ -197,10 +211,26 @@ export class HUDOverlay {
     eventBus.on('game:complete', this._onGameComplete);
     eventBus.on('game:pauseChange', this._onGamePauseChange);
     eventBus.on('i18n:change', this._onI18nChange);
+    eventBus.on('detection:wrongPart', this._onWrongPart);
   }
 
   _onRestartClick() {
     eventBus.emit('ui:restartClick');
+  }
+
+  // Nudge the child's eye back to the instruction when they touch the wrong
+  // part. Just a gentle attention cue, no error styling.
+  _onWrongPart() {
+    if (!this._instructionPanel) return;
+    this._instructionPanel.classList.remove('nudge');
+    // Force a reflow so the animation restarts even on rapid repeats.
+    void this._instructionPanel.offsetWidth;
+    this._instructionPanel.classList.add('nudge');
+    if (this._nudgeTimer !== null) clearTimeout(this._nudgeTimer);
+    this._nudgeTimer = setTimeout(() => {
+      this._nudgeTimer = null;
+      this._instructionPanel?.classList.remove('nudge');
+    }, 700);
   }
 
   _onGameStateChange({ state }) {
@@ -445,6 +475,7 @@ export class HUDOverlay {
     this._playingSection.querySelector('#label-hud-streak').textContent = i18n.t('ui.label_streak');
     this._playingSection.querySelector('#label-hud-time').textContent = i18n.t('ui.label_time');
     this._playingSection.querySelector('#label-hud-hold').textContent = i18n.t('ui.hold_it');
+    this._btnReplay?.setAttribute('aria-label', i18n.t('ui.hear_again'));
     const displayedSeconds = Number.isFinite(this._lastSecs) ? this._lastSecs : 0;
     this._timerEl.textContent = formatSeconds(displayedSeconds);
     this._timerEl.setAttribute(
@@ -529,9 +560,19 @@ export class HUDOverlay {
     eventBus.off('game:complete', this._onGameComplete);
     eventBus.off('game:pauseChange', this._onGamePauseChange);
     eventBus.off('i18n:change', this._onI18nChange);
+    eventBus.off('detection:wrongPart', this._onWrongPart);
+
+    if (this._nudgeTimer !== null) {
+      clearTimeout(this._nudgeTimer);
+      this._nudgeTimer = null;
+    }
 
     if (this._btnRestart) {
       this._btnRestart.removeEventListener('click', this._onRestartClick);
+    }
+
+    if (this._btnReplay) {
+      this._btnReplay.removeEventListener('click', this._onReplayClick);
     }
 
     this._stopTimer();

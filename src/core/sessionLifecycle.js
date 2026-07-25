@@ -1,8 +1,6 @@
-/**
- * Resume every real-time subsystem in one JavaScript task. In particular,
- * AudioContext.resume() is requested and camera frame delivery is scheduled
- * before either asynchronous operation is awaited, preventing a visible gap.
- */
+// Kick off all the realtime subsystems in one tick. We start the audio resume
+// and schedule the next camera frame before awaiting anything, so resuming
+// doesn't show a visible stutter.
 export function resumeSessionInSameTick({
   resumeAudio,
   resumeCamera,

@@ -58,6 +58,31 @@ export const PIPER_MODELS = Object.freeze({
   }),
 });
 
+/**
+ * Kokoro voices for the languages Kokoro handles well. Warm, natural female
+ * voices chosen for young children (voice + personalization principles).
+ * Install once: `pip install kokoro soundfile` (plus `espeak-ng` on the system).
+ * Voice models download automatically on first run and are cached locally.
+ */
+export const KOKORO_MODELS = Object.freeze({
+  en: Object.freeze({ voice: 'af_heart', langCode: 'a' }), // American English
+  es: Object.freeze({ voice: 'ef_dora', langCode: 'e' }),  // Spanish
+  fr: Object.freeze({ voice: 'ff_siwis', langCode: 'f' }), // French
+});
+
+/**
+ * Primary TTS engine per language: Kokoro where its quality/coverage is strong,
+ * Piper (retained) where Kokoro does not support the language well. Every entry
+ * still has a Piper voice in PIPER_MODELS as a fallback.
+ */
+export const ENGINE_BY_LANG = Object.freeze({
+  en: 'kokoro',
+  es: 'kokoro',
+  fr: 'kokoro',
+  de: 'piper',
+  ru: 'piper',
+});
+
 export const AUDIO_KEYS = Object.freeze(
   Object.keys(DICTIONARY.en).filter(
     (key) => key.startsWith('edu.') || key.startsWith('fact.') || key.startsWith('voice.'),
@@ -77,6 +102,30 @@ function fail(message) {
 
 function sha256(filePath) {
   return createHash('sha256').update(readFileSync(filePath)).digest('hex');
+}
+
+// Per-clip source-text fingerprints, so a clip is only regenerated when its
+// narration string actually changes (not just when the file is missing).
+const HASHES_PATH = join(PROJECT_ROOT, 'audio-hashes.json');
+
+function textHash(text) {
+  return createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 16);
+}
+
+function hashKey(lang, key) {
+  return `${lang}/${key}`;
+}
+
+function readHashes() {
+  try {
+    return JSON.parse(readFileSync(HASHES_PATH, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function writeHashes(hashes) {
+  writeFileSync(HASHES_PATH, `${JSON.stringify(hashes, null, 2)}\n`, 'utf8');
 }
 
 function assertPhraseInventory() {
@@ -122,6 +171,32 @@ function assertModel(lang) {
   return { ...model, modelPath, configPath };
 }
 
+let kokoroChecked = false;
+function assertKokoroAvailable() {
+  if (kokoroChecked) return;
+  const result = spawnSync(PYTHON_BIN, ['-c', 'import kokoro, soundfile'], {
+    encoding: 'utf8',
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
+  });
+  if (result.status !== 0) {
+    fail('Kokoro is not installed. Run: pip install kokoro soundfile  (and install espeak-ng on your system).');
+  }
+  kokoroChecked = true;
+}
+
+/** Resolve and validate the engine + model for a language. */
+function resolveEngine(lang) {
+  const engine = ENGINE_BY_LANG[lang] || 'piper';
+  if (engine === 'kokoro') {
+    const cfg = KOKORO_MODELS[lang];
+    if (!cfg) fail(`No Kokoro voice configured for ${lang}.`);
+    assertKokoroAvailable();
+    return { engine, voice: cfg.voice, langCode: cfg.langCode };
+  }
+  const model = assertModel(lang);
+  return { engine, ...model };
+}
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: PROJECT_ROOT,
@@ -149,11 +224,37 @@ function outputPathFor(lang, key) {
   return join(AUDIO_ROOT, lang, category, `${fileName}.mp3`);
 }
 
-function synthesizeLanguage(lang, model) {
+/** Write the engine's manifest and run its batch synthesizer to produce WAVs. */
+function synthesizeWavs(engineCtx, items, manifestPath) {
+  const manifestItems = items.map(({ text, wavPath }) => ({ text, wavPath }));
+  if (engineCtx.engine === 'kokoro') {
+    writeFileSync(manifestPath, JSON.stringify({
+      langCode: engineCtx.langCode,
+      voice: engineCtx.voice,
+      items: manifestItems,
+    }), 'utf8');
+    run(PYTHON_BIN, [join(PROJECT_ROOT, 'scripts', 'generate_kokoro_batch.py'), manifestPath]);
+    return;
+  }
+  writeFileSync(manifestPath, JSON.stringify({
+    modelPath: engineCtx.modelPath,
+    configPath: engineCtx.configPath,
+    speaker: Number.isInteger(engineCtx.speaker) ? engineCtx.speaker : null,
+    items: manifestItems,
+  }), 'utf8');
+  run(PYTHON_BIN, [join(PROJECT_ROOT, 'scripts', 'generate_piper_batch.py'), manifestPath]);
+}
+
+function isClipFresh(lang, key, hashes) {
+  // Fresh only when the file exists AND was generated from the current text.
+  return !FORCE
+    && existsSync(outputPathFor(lang, key))
+    && hashes[hashKey(lang, key)] === textHash(DICTIONARY[lang][key]);
+}
+
+function synthesizeLanguage(lang, engineCtx, hashes) {
   const languageAudioKeys = audioKeysForLanguage(lang);
-  const skippedKeys = languageAudioKeys.filter(
-    (key) => !FORCE && existsSync(outputPathFor(lang, key)),
-  );
+  const skippedKeys = languageAudioKeys.filter((key) => isClipFresh(lang, key, hashes));
   const keysToGenerate = languageAudioKeys.filter((key) => !skippedKeys.includes(key));
 
   for (const key of skippedKeys) {
@@ -176,19 +277,9 @@ function synthesizeLanguage(lang, model) {
   }));
 
   try {
-    writeFileSync(manifestPath, JSON.stringify({
-      modelPath: model.modelPath,
-      configPath: model.configPath,
-      speaker: Number.isInteger(model.speaker) ? model.speaker : null,
-      items: items.map(({ text, wavPath }) => ({ text, wavPath })),
-    }), 'utf8');
-
     // One Python process loads the model once and synthesizes every WAV for
-    // this locale, avoiding a costly model reload for each phrase.
-    run(PYTHON_BIN, [
-      join(PROJECT_ROOT, 'scripts', 'generate_piper_batch.py'),
-      manifestPath,
-    ]);
+    // this locale (via the selected engine), avoiding a per-phrase reload.
+    synthesizeWavs(engineCtx, items, manifestPath);
 
     for (const item of items) {
       mkdirSync(dirname(item.outputPath), { recursive: true });
@@ -206,6 +297,7 @@ function synthesizeLanguage(lang, model) {
         item.encodedPath,
       ]);
       renameSync(item.encodedPath, item.outputPath);
+      hashes[hashKey(lang, item.key)] = textHash(item.text);
       console.log(`  generated ${lang}/${item.key.replace('.', '/')}.mp3`);
     }
 
@@ -223,23 +315,27 @@ function parseLanguages() {
 export function main() {
   assertPhraseInventory();
   const languages = parseLanguages();
-  const models = Object.fromEntries(languages.map((lang) => [lang, assertModel(lang)]));
+  const engines = Object.fromEntries(languages.map((lang) => [lang, resolveEngine(lang)]));
 
   if (CHECK_ONLY) {
+    const summary = languages.map((lang) => `${lang}=${engines[lang].engine}(${engines[lang].voice})`).join(', ');
     console.log(
-      `[AudioGenerator] Ready: ${languages.join(', ')}; ` +
+      `[AudioGenerator] Ready: ${summary}; ` +
       '23 edu, 23 fact, and 9 localized-feedback phrases.'
     );
     return;
   }
 
+  const hashes = readHashes();
   let generated = 0;
   let skipped = 0;
   for (const lang of languages) {
-    console.log(`[AudioGenerator] Synthesizing ${lang} with ${models[lang].voice}...`);
-    const result = synthesizeLanguage(lang, models[lang]);
+    const engineCtx = engines[lang];
+    console.log(`[AudioGenerator] Synthesizing ${lang} with ${engineCtx.engine} (${engineCtx.voice})...`);
+    const result = synthesizeLanguage(lang, engineCtx, hashes);
     generated += result.generated;
     skipped += result.skipped;
+    writeHashes(hashes); // persist after each language so partial runs are resumable
   }
 
   console.log(`[AudioGenerator] Complete: ${generated} generated, ${skipped} skipped.`);

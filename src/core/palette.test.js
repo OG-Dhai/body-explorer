@@ -6,13 +6,22 @@ import { PALETTE } from './palette.js';
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const APPROVED_COLORS = Object.freeze([
-  '#EEF7FA',
+  '#E1F1FF',
   '#17324D',
   '#2C7A4B',
-  '#B8DFC4',
-  '#F2C486',
-  '#E9A3A0',
+  '#86DDA9',
+  '#FFB23E',
+  '#FA6E5A',
 ]);
+
+// Fixed real-world colours of the language-picker flag icons. These are content
+// (national flags), not brand chrome, so they are exempt from the six-colour
+// palette while everything else must stay on-palette.
+const FLAG_COLORS = Object.freeze([
+  '#012169', '#FFF', '#C8102E', '#000', '#D00', '#FFCE00',
+  '#0055A4', '#EF4135', '#F1BF00', '#AA151B', '#0039A6', '#D52B1E',
+]);
+const ALLOWED_LITERAL_COLORS = new Set([...APPROVED_COLORS, ...FLAG_COLORS]);
 
 const TEXT_EXTENSIONS = new Set(['.css', '.html', '.js', '.json', '.svg']);
 const HEX_COLOR_PATTERN = /(?<![\w-])#[\da-f]{3}(?:[\da-f]{3})?(?:[\da-f]{2})?(?![\da-f])/gi;
@@ -85,7 +94,7 @@ describe('six-color design system', () => {
       const relativePath = path.relative(PROJECT_ROOT, file);
       const offPaletteHex = [...source.matchAll(HEX_COLOR_PATTERN)]
         .map(match => match[0].toUpperCase())
-        .filter(color => !APPROVED_COLORS.includes(color));
+        .filter(color => !ALLOWED_LITERAL_COLORS.has(color));
       const functionalColors = [...source.matchAll(FUNCTION_COLOR_PATTERN)].map(match => match[0]);
       const threeHexColors = [...source.matchAll(THREE_HEX_PATTERN)].map(match => match[0]);
 

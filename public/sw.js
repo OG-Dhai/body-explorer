@@ -1,5 +1,9 @@
-const CACHE_NAME = 'body-explorer-v8-mediapipe-assets';
+const CACHE_NAME = 'body-explorer-v9-mediapipe-assets';
 
+// Only stable, always-present paths go here. addAll() fails the whole install if
+// any one 404s, so we don't list the model files: in production Vite bundles them
+// to hashed /assets/ names (which change per build) and they get cached at
+// runtime by the fetch handler instead.
 const PRECACHE_URLS = [
   '/',
   '/index.html',
@@ -8,8 +12,7 @@ const PRECACHE_URLS = [
   '/icons/difficulty-easy.png',
   '/icons/difficulty-medium.png',
   '/icons/difficulty-hard.png',
-  '/wasm/mediapipe/vision_wasm_internal.js',
-  '/wasm/mediapipe/pose_landmarker_lite.task'
+  '/wasm/mediapipe/vision_wasm_internal.js'
 ];
 
 self.addEventListener('install', event => {

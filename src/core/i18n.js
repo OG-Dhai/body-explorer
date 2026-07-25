@@ -54,16 +54,16 @@ const DICTIONARY = {
 
     // TTS Educational Questions
     'edu.nose': 'Where is your nose? Point to it!',
-    'edu.left_shoulder': 'Which joint connects your left arm to your body?',
-    'edu.right_shoulder': 'Which joint connects your right arm to your body?',
-    'edu.left_elbow': 'Which joint helps you bend your left arm?',
-    'edu.right_elbow': 'Which joint helps you bend your right arm?',
+    'edu.left_shoulder': 'Can you find your left shoulder? It\'s where your arm meets your body!',
+    'edu.right_shoulder': 'Can you find your right shoulder? It\'s where your arm meets your body!',
+    'edu.left_elbow': 'Where\'s your left elbow? Give your arm a little bend!',
+    'edu.right_elbow': 'Where\'s your right elbow? Give your arm a little bend!',
     'edu.head': 'Where is your head? Can you touch it?',
     'edu.chest': 'Where is your chest? Point to it!',
-    'edu.left_knee': 'Which joint helps you bend your left leg?',
-    'edu.right_knee': 'Which joint helps you bend your right leg?',
-    'edu.left_ankle': 'Which joint connects your left foot to your leg?',
-    'edu.right_ankle': 'Which joint connects your right foot to your leg?',
+    'edu.left_knee': 'Can you touch your left knee? It helps your leg bend!',
+    'edu.right_knee': 'Can you touch your right knee? It helps your leg bend!',
+    'edu.left_ankle': 'Where\'s your left ankle? It\'s just above your foot!',
+    'edu.right_ankle': 'Where\'s your right ankle? It\'s just above your foot!',
     'edu.left_ear': 'What do you use to hear on your left side?',
     'edu.right_ear': 'What do you use to hear on your right side?',
     'edu.mouth': 'Where is your mouth? Point to it!',
@@ -152,6 +152,27 @@ const DICTIONARY = {
     'ui.help_step_4': 'Earn stars for speed and accuracy',
     'ui.got_it': 'Got it!',
 
+    // Tutorial (how to touch each part)
+    'ui.tutorial_open': 'How to Play',
+    'ui.aria_tutorial': 'How to play and touch guide',
+    'ui.tutorial_rule_finger': 'Point and touch with one finger.',
+    'ui.tutorial_rule_hold': 'Hold it there for a moment.',
+    'ui.tutorial_rule_view': 'Keep the part where the camera can see it.',
+    'ui.tutorial_face': 'Face & head',
+    'ui.tutorial_face_desc': 'Touch your nose, eyes, mouth, ears or head with your fingertip.',
+    'ui.tutorial_chest': 'Chest',
+    'ui.tutorial_chest_desc': 'Touch the middle of your chest.',
+    'ui.tutorial_shoulders': 'Shoulders',
+    'ui.tutorial_shoulders_desc': 'Touch your shoulder from the front.',
+    'ui.tutorial_arms': 'Elbows & wrists',
+    'ui.tutorial_arms_desc': 'Reach across and touch with your OTHER hand.',
+    'ui.tutorial_hips': 'Hips',
+    'ui.tutorial_hips_desc': 'Touch the side of your hip.',
+    'ui.tutorial_knees': 'Knees',
+    'ui.tutorial_knees_desc': 'Bend your leg a little, then touch your knee.',
+    'ui.tutorial_feet': 'Feet & ankles',
+    'ui.tutorial_feet_desc': 'Step back so they show, then reach down and touch.',
+
     // Parents Info
     'ui.parents_title': 'For Parents: 100% Private & Safe',
     'ui.parents_body': 'Everything runs locally on your device. No camera data ever leaves your computer. No internet required to play!',
@@ -167,6 +188,7 @@ const DICTIONARY = {
     // HUD Gameplay
     'ui.hold_it': 'Hold it!',
     'ui.amazing_move': 'Amazing move!',
+    'ui.hear_again': 'Hear it again',
 
     // Loading States
     'ui.loading_camera': 'Loading camera...',
@@ -191,7 +213,7 @@ const DICTIONARY = {
     // Spoken feedback (voice.*)
     'voice.lightning': 'Lightning Fast!',
     'voice.great': 'Great Job!',
-    'voice.nice': 'Nice!',
+    'voice.nice': 'Nice one!',
     'voice.hold_it': 'Hold it!',
     'voice.amazing_move': 'Amazing move!',
     'voice.level_complete': 'Level Complete!',
@@ -268,16 +290,16 @@ const DICTIONARY = {
 
     // TTS Educational Questions
     'edu.nose': 'Wo ist deine Nase? Zeig sie mir!',
-    'edu.left_shoulder': 'Welches Gelenk verbindet deinen linken Arm mit dem Körper?',
-    'edu.right_shoulder': 'Welches Gelenk verbindet deinen rechten Arm mit dem Körper?',
-    'edu.left_elbow': 'Mit welchem Gelenk kannst du deinen linken Arm beugen?',
-    'edu.right_elbow': 'Mit welchem Gelenk kannst du deinen rechten Arm beugen?',
+    'edu.left_shoulder': 'Findest du deine linke Schulter? Da, wo dein Arm am Körper beginnt!',
+    'edu.right_shoulder': 'Findest du deine rechte Schulter? Da, wo dein Arm am Körper beginnt!',
+    'edu.left_elbow': 'Wo ist dein linker Ellbogen? Beuge deinen Arm ein bisschen!',
+    'edu.right_elbow': 'Wo ist dein rechter Ellbogen? Beuge deinen Arm ein bisschen!',
     'edu.head': 'Wo ist dein Kopf? Kannst du ihn berühren?',
     'edu.chest': 'Wo ist deine Brust? Zeig sie mir!',
-    'edu.left_knee': 'Mit welchem Gelenk kannst du dein linkes Bein beugen?',
-    'edu.right_knee': 'Mit welchem Gelenk kannst du dein rechtes Bein beugen?',
-    'edu.left_ankle': 'Welches Gelenk verbindet deinen linken Fuß mit dem Bein?',
-    'edu.right_ankle': 'Welches Gelenk verbindet deinen rechten Fuß mit dem Bein?',
+    'edu.left_knee': 'Kannst du dein linkes Knie berühren? Damit beugst du dein Bein!',
+    'edu.right_knee': 'Kannst du dein rechtes Knie berühren? Damit beugst du dein Bein!',
+    'edu.left_ankle': 'Wo ist dein linker Knöchel? Gleich über deinem Fuß!',
+    'edu.right_ankle': 'Wo ist dein rechter Knöchel? Gleich über deinem Fuß!',
     'edu.left_ear': 'Womit hörst du auf deiner linken Seite?',
     'edu.right_ear': 'Womit hörst du auf deiner rechten Seite?',
     'edu.mouth': 'Wo ist dein Mund? Zeig ihn mir!',
@@ -366,6 +388,27 @@ const DICTIONARY = {
     'ui.help_step_4': 'Verdiene Sterne für Schnelligkeit und Genauigkeit',
     'ui.got_it': 'Verstanden!',
 
+    // Tutorial (how to touch each part)
+    'ui.tutorial_open': 'Spielanleitung',
+    'ui.aria_tutorial': 'Anleitung: So berührst du die Körperteile',
+    'ui.tutorial_rule_finger': 'Zeig und tippe mit einem Finger.',
+    'ui.tutorial_rule_hold': 'Halte ihn kurz dort.',
+    'ui.tutorial_rule_view': 'Achte darauf, dass die Kamera das Körperteil sieht.',
+    'ui.tutorial_face': 'Gesicht & Kopf',
+    'ui.tutorial_face_desc': 'Berühre Nase, Augen, Mund, Ohren oder Kopf mit der Fingerspitze.',
+    'ui.tutorial_chest': 'Brust',
+    'ui.tutorial_chest_desc': 'Berühre die Mitte deiner Brust.',
+    'ui.tutorial_shoulders': 'Schultern',
+    'ui.tutorial_shoulders_desc': 'Berühre deine Schulter von vorne.',
+    'ui.tutorial_arms': 'Ellbogen & Handgelenke',
+    'ui.tutorial_arms_desc': 'Greif rüber und berühre sie mit der ANDEREN Hand.',
+    'ui.tutorial_hips': 'Hüften',
+    'ui.tutorial_hips_desc': 'Berühre die Seite deiner Hüfte.',
+    'ui.tutorial_knees': 'Knie',
+    'ui.tutorial_knees_desc': 'Beuge dein Bein ein wenig und berühre dein Knie.',
+    'ui.tutorial_feet': 'Füße & Knöchel',
+    'ui.tutorial_feet_desc': 'Tritt zurück, damit man sie sieht, dann beug dich runter und berühre sie.',
+
     // Parents Info
     'ui.parents_title': 'Für Eltern: 100% Privat & Sicher',
     'ui.parents_body': 'Alles läuft lokal auf Ihrem Gerät. Kameradaten verlassen nie Ihren Computer. Kein Internet erforderlich!',
@@ -381,6 +424,7 @@ const DICTIONARY = {
     // HUD Gameplay
     'ui.hold_it': 'Halten!',
     'ui.amazing_move': 'Tolle Bewegung!',
+    'ui.hear_again': 'Nochmal hören',
 
     // Loading States
     'ui.loading_camera': 'Kamera wird geladen...',
@@ -405,7 +449,7 @@ const DICTIONARY = {
     // Spoken feedback (voice.*)
     'voice.lightning': 'Blitzschnell!',
     'voice.great': 'Tolle Leistung!',
-    'voice.nice': 'Schön!',
+    'voice.nice': 'Gut gemacht!',
     'voice.hold_it': 'Halten!',
     'voice.amazing_move': 'Tolle Bewegung!',
     'voice.level_complete': 'Level Geschafft!',
@@ -482,16 +526,16 @@ const DICTIONARY = {
 
     // TTS Educational Questions
     'edu.nose': 'Où est ton nez ? Montre-le !',
-    'edu.left_shoulder': 'Quelle articulation relie ton bras gauche à ton corps ?',
-    'edu.right_shoulder': 'Quelle articulation relie ton bras droit à ton corps ?',
-    'edu.left_elbow': 'Quelle articulation te permet de plier ton bras gauche ?',
-    'edu.right_elbow': 'Quelle articulation te permet de plier ton bras droit ?',
+    'edu.left_shoulder': 'Trouves-tu ton épaule gauche ? C\'est là que ton bras rejoint ton corps !',
+    'edu.right_shoulder': 'Trouves-tu ton épaule droite ? C\'est là que ton bras rejoint ton corps !',
+    'edu.left_elbow': 'Où est ton coude gauche ? Plie un peu ton bras !',
+    'edu.right_elbow': 'Où est ton coude droit ? Plie un peu ton bras !',
     'edu.head': 'Où est ta tête ? Peux-tu la toucher ?',
     'edu.chest': 'Où est ta poitrine ? Montre-la !',
-    'edu.left_knee': 'Quelle articulation te permet de plier ta jambe gauche ?',
-    'edu.right_knee': 'Quelle articulation te permet de plier ta jambe droite ?',
-    'edu.left_ankle': 'Quelle articulation relie ton pied gauche à ta jambe ?',
-    'edu.right_ankle': 'Quelle articulation relie ton pied droit à ta jambe ?',
+    'edu.left_knee': 'Peux-tu toucher ton genou gauche ? Il aide ta jambe à se plier !',
+    'edu.right_knee': 'Peux-tu toucher ton genou droit ? Il aide ta jambe à se plier !',
+    'edu.left_ankle': 'Où est ta cheville gauche ? Juste au-dessus de ton pied !',
+    'edu.right_ankle': 'Où est ta cheville droite ? Juste au-dessus de ton pied !',
     'edu.left_ear': 'Avec quoi entends-tu du côté gauche ?',
     'edu.right_ear': 'Avec quoi entends-tu du côté droit ?',
     'edu.mouth': 'Où est ta bouche ? Montre-la !',
@@ -580,6 +624,27 @@ const DICTIONARY = {
     'ui.help_step_4': 'Gagne des étoiles pour la vitesse et la précision',
     'ui.got_it': 'Compris !',
 
+    // Tutorial (how to touch each part)
+    'ui.tutorial_open': 'Comment Jouer',
+    'ui.aria_tutorial': 'Guide : comment toucher les parties du corps',
+    'ui.tutorial_rule_finger': 'Montre et touche avec un doigt.',
+    'ui.tutorial_rule_hold': 'Garde-le là un petit moment.',
+    'ui.tutorial_rule_view': 'La caméra doit bien voir la partie du corps.',
+    'ui.tutorial_face': 'Visage & tête',
+    'ui.tutorial_face_desc': 'Touche ton nez, tes yeux, ta bouche, tes oreilles ou ta tête du bout du doigt.',
+    'ui.tutorial_chest': 'Poitrine',
+    'ui.tutorial_chest_desc': 'Touche le milieu de ta poitrine.',
+    'ui.tutorial_shoulders': 'Épaules',
+    'ui.tutorial_shoulders_desc': 'Touche ton épaule par devant.',
+    'ui.tutorial_arms': 'Coudes & poignets',
+    'ui.tutorial_arms_desc': 'Passe le bras et touche avec ton AUTRE main.',
+    'ui.tutorial_hips': 'Hanches',
+    'ui.tutorial_hips_desc': 'Touche le côté de ta hanche.',
+    'ui.tutorial_knees': 'Genoux',
+    'ui.tutorial_knees_desc': 'Plie un peu ta jambe, puis touche ton genou.',
+    'ui.tutorial_feet': 'Pieds & chevilles',
+    'ui.tutorial_feet_desc': 'Recule pour qu\'on les voie, puis penche-toi et touche.',
+
     // Parents Info
     'ui.parents_title': 'Pour les Parents : 100% Privé & Sûr',
     'ui.parents_body': 'Tout fonctionne localement sur votre appareil. Les données de la caméra ne quittent jamais votre ordinateur. Pas d\'internet requis !',
@@ -595,6 +660,7 @@ const DICTIONARY = {
     // HUD Gameplay
     'ui.hold_it': 'Maintiens !',
     'ui.amazing_move': 'Mouvement incroyable !',
+    'ui.hear_again': 'Réécouter',
 
     // Loading States
     'ui.loading_camera': 'Chargement de la caméra...',
@@ -619,7 +685,7 @@ const DICTIONARY = {
     // Spoken feedback (voice.*)
     'voice.lightning': 'Rapide comme l\'éclair !',
     'voice.great': 'Bravo, très bon travail !',
-    'voice.nice': 'Super !',
+    'voice.nice': 'Bien joué !',
     'voice.hold_it': 'Garde la position !',
     'voice.amazing_move': 'Quel mouvement incroyable !',
     'voice.level_complete': 'Niveau terminé !',
@@ -696,16 +762,16 @@ const DICTIONARY = {
 
     // TTS Educational Questions
     'edu.nose': '¿Dónde está tu nariz? ¡Señálala!',
-    'edu.left_shoulder': '¿Qué articulación une tu brazo izquierdo con el cuerpo?',
-    'edu.right_shoulder': '¿Qué articulación une tu brazo derecho con el cuerpo?',
-    'edu.left_elbow': '¿Qué articulación te ayuda a doblar el brazo izquierdo?',
-    'edu.right_elbow': '¿Qué articulación te ayuda a doblar el brazo derecho?',
+    'edu.left_shoulder': '¿Puedes encontrar tu hombro izquierdo? ¡Donde tu brazo se une al cuerpo!',
+    'edu.right_shoulder': '¿Puedes encontrar tu hombro derecho? ¡Donde tu brazo se une al cuerpo!',
+    'edu.left_elbow': '¿Dónde está tu codo izquierdo? ¡Dobla un poco el brazo!',
+    'edu.right_elbow': '¿Dónde está tu codo derecho? ¡Dobla un poco el brazo!',
     'edu.head': '¿Dónde está tu cabeza? ¿Puedes tocarla?',
     'edu.chest': '¿Dónde está tu pecho? ¡Señálalo!',
-    'edu.left_knee': '¿Qué articulación te ayuda a doblar la pierna izquierda?',
-    'edu.right_knee': '¿Qué articulación te ayuda a doblar la pierna derecha?',
-    'edu.left_ankle': '¿Qué articulación une tu pie izquierdo con la pierna?',
-    'edu.right_ankle': '¿Qué articulación une tu pie derecho con la pierna?',
+    'edu.left_knee': '¿Puedes tocar tu rodilla izquierda? ¡Te ayuda a doblar la pierna!',
+    'edu.right_knee': '¿Puedes tocar tu rodilla derecha? ¡Te ayuda a doblar la pierna!',
+    'edu.left_ankle': '¿Dónde está tu tobillo izquierdo? ¡Justo encima de tu pie!',
+    'edu.right_ankle': '¿Dónde está tu tobillo derecho? ¡Justo encima de tu pie!',
     'edu.left_ear': '¿Con qué oyes por el lado izquierdo?',
     'edu.right_ear': '¿Con qué oyes por el lado derecho?',
     'edu.mouth': '¿Dónde está tu boca? ¡Señálala!',
@@ -794,6 +860,27 @@ const DICTIONARY = {
     'ui.help_step_4': 'Gana estrellas por velocidad y precisión',
     'ui.got_it': '¡Entendido!',
 
+    // Tutorial (how to touch each part)
+    'ui.tutorial_open': 'Cómo Jugar',
+    'ui.aria_tutorial': 'Guía: cómo tocar las partes del cuerpo',
+    'ui.tutorial_rule_finger': 'Señala y toca con un dedo.',
+    'ui.tutorial_rule_hold': 'Mantenlo ahí un momento.',
+    'ui.tutorial_rule_view': 'Deja que la cámara vea la parte del cuerpo.',
+    'ui.tutorial_face': 'Cara y cabeza',
+    'ui.tutorial_face_desc': 'Toca tu nariz, ojos, boca, orejas o cabeza con la punta del dedo.',
+    'ui.tutorial_chest': 'Pecho',
+    'ui.tutorial_chest_desc': 'Toca el centro de tu pecho.',
+    'ui.tutorial_shoulders': 'Hombros',
+    'ui.tutorial_shoulders_desc': 'Toca tu hombro por delante.',
+    'ui.tutorial_arms': 'Codos y muñecas',
+    'ui.tutorial_arms_desc': 'Cruza el brazo y toca con la OTRA mano.',
+    'ui.tutorial_hips': 'Caderas',
+    'ui.tutorial_hips_desc': 'Toca el lado de tu cadera.',
+    'ui.tutorial_knees': 'Rodillas',
+    'ui.tutorial_knees_desc': 'Dobla un poco la pierna y toca tu rodilla.',
+    'ui.tutorial_feet': 'Pies y tobillos',
+    'ui.tutorial_feet_desc': 'Aléjate para que se vean, luego agáchate y tócalos.',
+
     // Parents Info
     'ui.parents_title': 'Para Padres: 100% Privado y Seguro',
     'ui.parents_body': 'Todo funciona localmente en su dispositivo. Ningún dato sale de su ordenador. ¡No requiere internet!',
@@ -809,6 +896,7 @@ const DICTIONARY = {
     // HUD Gameplay
     'ui.hold_it': '¡Mantenlo!',
     'ui.amazing_move': '¡Movimiento increíble!',
+    'ui.hear_again': 'Escuchar otra vez',
 
     // Loading States
     'ui.loading_camera': 'Cargando cámara...',
@@ -833,7 +921,7 @@ const DICTIONARY = {
     // Spoken feedback (voice.*)
     'voice.lightning': '¡Rápido como el rayo!',
     'voice.great': '¡Buen trabajo!',
-    'voice.nice': '¡Muy bien!',
+    'voice.nice': '¡Muy bien hecho!',
     'voice.hold_it': '¡Mantén la posición!',
     'voice.amazing_move': '¡Qué movimiento tan increíble!',
     'voice.level_complete': '¡Nivel completado!',
@@ -910,16 +998,16 @@ const DICTIONARY = {
 
     // TTS Educational Questions
     'edu.nose': 'Где твой нос? Покажи его!',
-    'edu.left_shoulder': 'Какой сустав соединяет левую руку с телом?',
-    'edu.right_shoulder': 'Какой сустав соединяет правую руку с телом?',
-    'edu.left_elbow': 'Какой сустав помогает тебе сгибать левую руку?',
-    'edu.right_elbow': 'Какой сустав помогает тебе сгибать правую руку?',
+    'edu.left_shoulder': 'Найдёшь своё левое плечо? Там, где рука соединяется с телом!',
+    'edu.right_shoulder': 'Найдёшь своё правое плечо? Там, где рука соединяется с телом!',
+    'edu.left_elbow': 'Где твой левый локоть? Согни немного руку!',
+    'edu.right_elbow': 'Где твой правый локоть? Согни немного руку!',
     'edu.head': 'Где твоя голова? Можешь до неё дотронуться?',
     'edu.chest': 'Где твоя грудь? Покажи её!',
-    'edu.left_knee': 'Какой сустав помогает тебе сгибать левую ногу?',
-    'edu.right_knee': 'Какой сустав помогает тебе сгибать правую ногу?',
-    'edu.left_ankle': 'Какой сустав соединяет левую ступню с ногой?',
-    'edu.right_ankle': 'Какой сустав соединяет правую ступню с ногой?',
+    'edu.left_knee': 'Можешь дотронуться до левого колена? Оно помогает сгибать ногу!',
+    'edu.right_knee': 'Можешь дотронуться до правого колена? Оно помогает сгибать ногу!',
+    'edu.left_ankle': 'Где твоя левая лодыжка? Прямо над ступнёй!',
+    'edu.right_ankle': 'Где твоя правая лодыжка? Прямо над ступнёй!',
     'edu.left_ear': 'Каким ухом ты слышишь слева?',
     'edu.right_ear': 'Каким ухом ты слышишь справа?',
     'edu.mouth': 'Где твой рот? Покажи его!',
@@ -1008,6 +1096,27 @@ const DICTIONARY = {
     'ui.help_step_4': 'Зарабатывай звёзды за скорость и точность',
     'ui.got_it': 'Понятно!',
 
+    // Tutorial (how to touch each part)
+    'ui.tutorial_open': 'Как играть',
+    'ui.aria_tutorial': 'Как касаться частей тела',
+    'ui.tutorial_rule_finger': 'Показывай и касайся одним пальцем.',
+    'ui.tutorial_rule_hold': 'Подержи палец там немного.',
+    'ui.tutorial_rule_view': 'Камера должна видеть эту часть тела.',
+    'ui.tutorial_face': 'Лицо и голова',
+    'ui.tutorial_face_desc': 'Коснись носа, глаз, рта, ушей или головы кончиком пальца.',
+    'ui.tutorial_chest': 'Грудь',
+    'ui.tutorial_chest_desc': 'Коснись середины груди.',
+    'ui.tutorial_shoulders': 'Плечи',
+    'ui.tutorial_shoulders_desc': 'Коснись плеча спереди.',
+    'ui.tutorial_arms': 'Локти и запястья',
+    'ui.tutorial_arms_desc': 'Дотянись и коснись ДРУГОЙ рукой.',
+    'ui.tutorial_hips': 'Бёдра',
+    'ui.tutorial_hips_desc': 'Коснись сбоку бедра.',
+    'ui.tutorial_knees': 'Колени',
+    'ui.tutorial_knees_desc': 'Немного согни ногу и коснись колена.',
+    'ui.tutorial_feet': 'Ступни и лодыжки',
+    'ui.tutorial_feet_desc': 'Отойди, чтобы их было видно, потом нагнись и коснись.',
+
     // Parents Info
     'ui.parents_title': 'Для родителей: 100% конфиденциально и безопасно',
     'ui.parents_body': 'Все работает локально. Данные с камеры не покидают компьютер. Интернет не нужен!',
@@ -1023,6 +1132,7 @@ const DICTIONARY = {
     // HUD Gameplay
     'ui.hold_it': 'Держи!',
     'ui.amazing_move': 'Отличное движение!',
+    'ui.hear_again': 'Послушать ещё раз',
 
     // Loading States
     'ui.loading_camera': 'Загрузка камеры...',
@@ -1047,7 +1157,7 @@ const DICTIONARY = {
     // Spoken feedback (voice.*)
     'voice.lightning': 'Быстро, как молния!',
     'voice.great': 'Отличная работа!',
-    'voice.nice': 'Здорово!',
+    'voice.nice': 'Здорово получилось!',
     'voice.hold_it': 'Замри!',
     'voice.amazing_move': 'Вот это движение!',
     'voice.level_complete': 'Уровень пройден!',
@@ -1074,17 +1184,27 @@ const DICTIONARY = {
 };
 
 // Generate a static manifest array of localized speech and global sound effects.
+// Only assets that are actually played are listed here, because every entry is
+// fetched and decoded on startup. The success/level-up/click cues are served by
+// GAME_AUDIO_ASSETS (loaded on demand), so the only global effect that must be
+// preloaded via this manifest is the error buzz.
 export const AUDIO_KEYS = [
   ...Object.keys(DICTIONARY.en).filter(
     k => k.startsWith('edu.') || k.startsWith('fact.') || k.startsWith('voice.')
   ),
-  'sfx:success',
-  'sfx:wellDone',
-  'sfx:fireworks',
-  'sfx:error',
-  'sfx:click',
-  'bgm:background'
+  'sfx:error'
 ];
+
+// Native name of each language, shown in the language picker so a child (or
+// parent) can recognize their language in its own script rather than guessing
+// from a two-letter code. Keys must match the DICTIONARY locales above.
+export const LANGUAGE_NAMES = Object.freeze({
+  en: 'English',
+  de: 'Deutsch',
+  fr: 'Français',
+  es: 'Español',
+  ru: 'Русский',
+});
 
 let currentLocale = 'en';
 

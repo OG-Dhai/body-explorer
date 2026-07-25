@@ -109,7 +109,7 @@ afterEach(() => {
 });
 
 describe('curated game audio integration', () => {
-  it('references all eight original audio_downloads filenames', async () => {
+  it('references the curated audio filenames', async () => {
     const { GAME_AUDIO_ASSETS } = await importAudioEngine();
     const filenames = Object.values(GAME_AUDIO_ASSETS).map(({ fileName }) => fileName);
 
@@ -118,14 +118,12 @@ describe('curated game audio integration', () => {
       'cartoon-kids-endscreen-music-bright-button-bye-500891.mp3',
       'cartoon-transition-music-quick-color-hop-500898.mp3',
       'cartoon-transition-sting-fast-happy-turn-500910.mp3',
-      'soothing-happy-strings-loop-294236.mp3',
-      'the-best-day-ever-loop-533304.mp3',
+      'background.mp3',
       'click.wav',
       'Menu Selection Click.wav',
     ]);
 
     for (const asset of Object.values(GAME_AUDIO_ASSETS)) {
-      expect(asset.url).toContain('/audio_downloads/');
       expect(decodeURIComponent(asset.url)).toContain(asset.fileName);
       expect(asset.volume).toBeLessThanOrEqual(0.65);
     }
@@ -261,7 +259,7 @@ describe('curated game audio integration', () => {
     await expect(playbackPromise).resolves.toBe(true);
   });
 
-  it('alternates non-stacking background loops by level at moderate volume', async () => {
+  it('loops one non-stacking background track at moderate volume', async () => {
     const {
       getBackgroundTrackKeyForLevel,
       playBackgroundMusic,
@@ -272,29 +270,25 @@ describe('curated game audio integration', () => {
     await preloadAudioAssets();
     const ctx = contexts[0];
 
-    expect(getBackgroundTrackKeyForLevel(1)).toBe('bgm:soothing');
-    expect(getBackgroundTrackKeyForLevel(2)).toBe('bgm:upbeat');
-    expect(getBackgroundTrackKeyForLevel(3)).toBe('bgm:soothing');
+    // One shared loop for every level.
+    expect(getBackgroundTrackKeyForLevel(1)).toBe('bgm:background');
+    expect(getBackgroundTrackKeyForLevel(2)).toBe('bgm:background');
+    expect(getBackgroundTrackKeyForLevel(3)).toBe('bgm:background');
 
     await expect(playBackgroundMusic(1)).resolves.toBe(true);
-    const levelOneSource = ctx.sources.at(-1);
-    const levelOneGain = ctx.gains.at(-1);
-    expect(levelOneSource.loop).toBe(true);
-    expect(levelOneSource.start).toHaveBeenCalledOnce();
-    expect(levelOneGain.gain.value).toBeCloseTo(0.14);
+    const source = ctx.sources.at(-1);
+    const gain = ctx.gains.at(-1);
+    expect(source.loop).toBe(true);
+    expect(source.start).toHaveBeenCalledOnce();
+    expect(gain.gain.value).toBeCloseTo(0.12);
 
+    // Starting again for any level keeps the same single source.
     await playBackgroundMusic(1);
+    await playBackgroundMusic(2);
     expect(ctx.sources).toHaveLength(1);
 
-    await playBackgroundMusic(2);
-    const levelTwoSource = ctx.sources.at(-1);
-    expect(ctx.sources).toHaveLength(2);
-    expect(levelTwoSource.loop).toBe(true);
-    expect(levelTwoSource.buffer).not.toBe(levelOneSource.buffer);
-    expect(levelOneSource.stop).toHaveBeenCalledOnce();
-
     stopBackgroundMusic(0);
-    expect(levelTwoSource.stop).toHaveBeenCalledOnce();
+    expect(source.stop).toHaveBeenCalledOnce();
   });
 
   it('maps the four one-shot cues to distinct non-looping buffers', async () => {
@@ -374,15 +368,15 @@ describe('curated game audio integration', () => {
 
     await playGameStart();
     const firstCue = ctx.sources.at(-1);
-    expect(backgroundGain.gain.value).toBeCloseTo(0.055);
+    expect(backgroundGain.gain.value).toBeCloseTo(0.035);
 
     await playGameStart();
     const replacementCue = ctx.sources.at(-1);
     firstCue.onended?.();
-    expect(backgroundGain.gain.value).toBeCloseTo(0.055);
+    expect(backgroundGain.gain.value).toBeCloseTo(0.035);
 
     replacementCue.onended?.();
-    expect(backgroundGain.gain.value).toBeCloseTo(0.14);
+    expect(backgroundGain.gain.value).toBeCloseTo(0.12);
   });
 
   it('routes every sound through one master gain and persists exact mute state', async () => {

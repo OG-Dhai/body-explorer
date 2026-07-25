@@ -1,13 +1,12 @@
 import { CONFIG } from '../core/config.js';
 import { StateMachine } from '../core/stateMachine.js';
 import eventBus from '../core/eventBus.js';
-import { computeDistance, computeDynamicThreshold } from '../math/spatialMath.js';
+import { evaluateHit } from './hitValidator.js';
 import { HoldDetector } from './holdDetector.js';
 import { QuestionBank } from './questionBank.js';
 import { ScoringSystem } from './scoringSystem.js';
 import { VisibilityTracker } from './visibilityTracker.js';
 
-const HAND_JOINTS = [15, 16, 19, 20]; // Wrists and index fingers
 const AMAZING_MOVE_STREAK_INTERVAL = 3;
 export const GAME_VOICE_KEYS = Object.freeze({
   hold: 'voice.hold_it',
@@ -34,7 +33,9 @@ export class GameEngine {
     this._visibilityTracker = new VisibilityTracker();
     
     this._currentDistance = null;
-    this._dynamicThreshold = 0.30; // Will be recalculated every frame
+    this._dynamicThreshold = CONFIG.detection.hit.baseRadius; // normalized; recalculated every frame
+    this._hitRadius = CONFIG.detection.hit.baseRadius;
+    this._contactRadius = CONFIG.detection.hit.contactRadius;
     this._lastTime = performance.now();
     this._startingLevel = 1;
     this._currentLevel = this._startingLevel;
@@ -46,7 +47,9 @@ export class GameEngine {
     this._paused = false;
     this._disposed = false;
     this._instructionReadyPending = false;
-    this._thresholdMultiplier = 1.0;
+    this._hitRadiusScale = 1.0; // per-level scale on the hit radius (set in LEVEL_INTRO)
+    this._wrongPartMs = 0;
+    this._lastWrongPartId = null;
     this._environmentThresholdMultiplier = this._sanitizeThresholdMultiplier(environmentThresholdMultiplier);
     this._lastLevelPassed = false;
     this._lastLevelTargetKey = null;
@@ -80,7 +83,7 @@ export class GameEngine {
         LEVEL_INTRO: () => {
           const levelParams = CONFIG.game.levels[this._currentLevel];
           this._holdDetector.setHoldDuration(levelParams.holdDuration);
-          this._thresholdMultiplier = levelParams.thresholdMultiplier;
+          this._hitRadiusScale = levelParams.hitRadiusScale;
 
           const generateRound = () => {
             if (!this._fsm.is('LEVEL_INTRO')) return;
@@ -132,15 +135,17 @@ export class GameEngine {
           
           this._holdDetector.reset();
           this._holdVoicePrompted = false;
-          
+          this._wrongPartMs = 0;
+          this._lastWrongPartId = null;
+
           eventBus.emit('game:newQuestion', {
             question,
             progress: this._questionBank.getProgress(),
             stats: this._scoring.getStats()
           });
 
-          // Transition to DETECTING will happen when 'audio:ttsComplete' is received
-          // SAFETY FALLBACK: If TTS fails or hangs, auto-start after max 5 seconds
+          // We move to DETECTING once 'audio:ttsComplete' fires. This timer is
+          // the fallback: if TTS fails or hangs, start anyway after ~5s.
           this._scheduleInstructionSafetyTimer();
         },
         DETECTING: () => {
@@ -532,19 +537,27 @@ export class GameEngine {
     }
   }
 
-  /** @param {Array} worldLandmarks */
-  update(worldLandmarks) {
+  /**
+   * @param {{ pose: Array|null, hands: Array, face: Array|null }} frame
+   *   Per-frame recognition snapshot: pose image landmarks (targets + visibility),
+   *   detected hands (fingertips), and face landmarks when a face target is active.
+   */
+  update(frame) {
     if (this._paused || this._disposed) return;
-    this._visibilityTracker.update(worldLandmarks);
+    this._visibilityTracker.update(frame?.pose ?? null);
 
     if (!this._fsm.is('DETECTING')) {
       return;
     }
-    
-    if (!worldLandmarks || worldLandmarks.length < 33) {
-      this._holdDetector.update(null, CONFIG.game.timing.fallbackFrameDeltaMs, this._dynamicThreshold);
-      return;
-    }
+
+    // Body-normalized hit radius, scaled by level difficulty and (a little) by
+    // low light. Both radii are fractions of shoulder width.
+    const hitCfg = CONFIG.detection.hit;
+    const radiusScale = this._hitRadiusScale
+      * (this._environmentThresholdMultiplier > 1.0 ? hitCfg.lowLightRadiusScale : 1.0);
+    this._hitRadius = hitCfg.baseRadius * radiusScale;
+    this._contactRadius = hitCfg.contactRadius * radiusScale;
+    this._dynamicThreshold = this._hitRadius;
 
     const now = performance.now();
     const dt = now - this._lastTime;
@@ -553,45 +566,44 @@ export class GameEngine {
     const question = this._questionBank.getCurrentQuestion();
     if (!question) return;
 
-    const targetData = CONFIG.targetMap[question.id];
-    const targetMultiplier = (targetData && targetData.thresholdMultiplier) ? targetData.thresholdMultiplier : 1.0;
+    const result = evaluateHit(frame ?? {}, question, CONFIG.targetMap, hitCfg);
+    this._currentDistance = result.score;
 
-    // Compute body-size-adaptive threshold from real-time shoulder width
-    this._dynamicThreshold = computeDynamicThreshold(worldLandmarks) * this._thresholdMultiplier * this._environmentThresholdMultiplier * targetMultiplier;
+    // Gently correct a hand that is clearly parked on the wrong part.
+    this._updateWrongPartFeedback(result, question, dt);
 
-    const targetJoints = question.indices;
-    let minDistance = Infinity;
+    // Only feed proximity to the hold timer when the asked part is genuinely the
+    // nearest part and a real hand is doing the touching; otherwise the hold
+    // decays. The contact radius then blocks a hover that never actually lands.
+    const eligible = result.handVisible && result.isAskedNearest && result.score !== null;
+    const feedDistance = eligible ? result.score : null;
+    this._holdDetector.update(feedDistance, dt, this._hitRadius, this._contactRadius);
+  }
 
-    const LEFT_POINTERS = [15, 19];
-    const RIGHT_POINTERS = [16, 20];
-    const WRIST_TARGETS = [15, 16];
+  /**
+   * Emit a one-shot `detection:wrongPart` when the hand has sat on a clearly
+   * different part long enough. Non-punishing: no score or state change here.
+   */
+  _updateWrongPartFeedback(result, question, dt) {
+    const cfg = CONFIG.detection.hit;
+    const onWrongPart = !result.isAskedNearest
+      && result.nearestScore !== null
+      && result.nearestScore < this._hitRadius;
 
-    for (const handId of HAND_JOINTS) {
-      const handLm = worldLandmarks[handId];
-      if (!handLm) continue;
-
-      for (const targetId of targetJoints) {
-        const targetLm = worldLandmarks[targetId];
-        if (!targetLm) continue;
-
-        // Guard: Prevent hand from auto-completing its own wrist target
-        if (WRIST_TARGETS.includes(targetId)) {
-          const isLeftTarget = targetId === 15;
-          const isLeftPointer = LEFT_POINTERS.includes(handId);
-          const isRightPointer = RIGHT_POINTERS.includes(handId);
-
-          if (isLeftTarget && isLeftPointer) continue;
-          if (!isLeftTarget && isRightPointer) continue; // It's a right target (16)
-        }
-
-        const dist = computeDistance(handLm, targetLm);
-        if (dist < minDistance) {
-          minDistance = dist;
-        }
-      }
+    if (!onWrongPart) {
+      this._wrongPartMs = 0;
+      this._lastWrongPartId = null;
+      return;
     }
 
-    this._currentDistance = minDistance === Infinity ? null : minDistance;
-    this._holdDetector.update(this._currentDistance, dt, this._dynamicThreshold);
+    this._wrongPartMs += dt;
+    if (this._wrongPartMs >= cfg.wrongPartHoldMs
+      && this._lastWrongPartId !== result.nearestPartId) {
+      this._lastWrongPartId = result.nearestPartId;
+      eventBus.emit('detection:wrongPart', {
+        askedId: question.id,
+        touchedId: result.nearestPartId,
+      });
+    }
   }
 }
