@@ -52,7 +52,9 @@ export const CONFIG = {
         name: 'easy',
         questionsPerRound: 4,
         holdDuration: 1200,
-        // Same hit tolerance on every level. Only the timing gets tighter.
+        // Tolerance tightens a little on the harder levels. Deliberately small
+        // steps: a correct touch still has to register, so most of the extra
+        // difficulty comes from the timing, not from a stricter radius.
         hitRadiusScale: 1.0,
         instructionDelay: 2000,
         questionTimeout: 15000,
@@ -62,7 +64,7 @@ export const CONFIG = {
         name: 'medium',
         questionsPerRound: 6,
         holdDuration: 1000,
-        hitRadiusScale: 1.0, // same tolerance as Easy
+        hitRadiusScale: 0.95, // 5% tighter than Easy
         instructionDelay: 1500,
         questionTimeout: 12000,
         comboRequirement: 0,
@@ -71,7 +73,7 @@ export const CONFIG = {
         name: 'hard',
         questionsPerRound: 7,
         holdDuration: 700,
-        hitRadiusScale: 1.0, // same tolerance as Easy
+        hitRadiusScale: 0.9, // 10% tighter than Easy
         instructionDelay: 1000,
         questionTimeout: 8000,
         comboRequirement: 3,
@@ -81,8 +83,9 @@ export const CONFIG = {
   // Targets are grouped into three tiers in the order kids learn body parts
   // (research PMC4505369): face and head first, then torso, then limbs and the
   // fine joints last. easy = level 1, normal = level 2, advanced = level 3.
-  // Tolerance is the same everywhere; the nearest-part check keeps the clustered
-  // face parts from validating each other. Keep tier sizes at 5/8/10 so the
+  // Tolerance only tightens slightly per level (see hitRadiusScale); the
+  // nearest-part check is what keeps the clustered face parts from validating
+  // each other. Keep tier sizes at 5/8/10 so the
   // QuestionBank fallback still works.
   targetMap: {
     // Level 1 (easy): face and head
