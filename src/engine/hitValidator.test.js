@@ -106,7 +106,7 @@ describe('evaluateHit (fingertip)', () => {
 
   it('accepts a wrist touch when both hands are close together', () => {
     // The real case: the left (own) hand sits on the left wrist, and the right
-    // hand reaches in to touch it — so the two hands are near each other. Only
+    // hand reaches in to touch it, so the two hands are near each other. Only
     // the own hand is excluded; the touching hand still counts.
     const ownHand = makeHand({ x: 0.30, y: 0.55 }, { x: 0.30, y: 0.55 }); // on the wrist
     const touchingHand = makeHand({ x: 0.30, y: 0.55 }, { x: 0.45, y: 0.55 }); // fingertip on it, wrist nearby
@@ -118,7 +118,7 @@ describe('evaluateHit (fingertip)', () => {
 
 });
 
-describe('evaluateHit — face parts are distinguished (face-width scale)', () => {
+describe('evaluateHit: face parts are distinguished (face-width scale)', () => {
   it('confirms the nose when the finger is on the nose', () => {
     const frame = { pose: makePose(), hands: [makeHand({ x: 0.50, y: 0.27 })], face: makeFace() };
     const r = evaluateHit(frame, question('nose'), CONFIG.targetMap, HIT);
@@ -141,7 +141,7 @@ describe('evaluateHit — face parts are distinguished (face-width scale)', () =
   });
 });
 
-describe('evaluateHit — chest is the centre, not the shoulders', () => {
+describe('evaluateHit: chest is the centre, not the shoulders', () => {
   it('confirms the chest at its centre (below the shoulder line)', () => {
     // Shoulders y=0.40, hips y=0.65 → chest centre pulled 30% down ≈ (0.50, 0.475).
     const frame = { pose: makePose(), hands: [makeHand({ x: 0.50, y: 0.475 })], face: null };

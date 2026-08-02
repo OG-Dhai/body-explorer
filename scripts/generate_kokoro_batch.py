@@ -5,7 +5,7 @@ Manifest shape: { "langCode": "a", "voice": "af_heart",
 
 Install once:  pip install kokoro soundfile   (plus system `espeak-ng`).
 Kokoro voice models download automatically on first run and are cached locally,
-so generation is fully offline after that. The app itself never calls Kokoro —
+so generation is fully offline after that. The app itself never calls Kokoro;
 this is a build-time step that produces the bundled MP3s.
 """
 

@@ -2,7 +2,7 @@
  * Hit-validation regression suite (fingertip recognition).
  *
  * Drives the REAL GameEngine.update() path (hitValidator + holdDetector + config)
- * with synthetic recognition frames — pose image landmarks (targets) plus a hand
+ * with synthetic recognition frames: pose image landmarks (targets) plus a hand
  * with a fingertip. Covers a correct touch, a hover, a wrong/adjacent part, no
  * hand, and a face target, plus a fairness guard (slightly-sloppy touch).
  */
@@ -103,7 +103,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('fingertip recognition — correct vs. wrong / near', () => {
+describe('fingertip recognition: correct vs. wrong / near', () => {
   it('confirms a correct fingertip touch on the knee', () => {
     expect(confirmsHit('left_knee', { x: 0.45, y: 0.80 })).toBe(true);
   });
@@ -129,7 +129,7 @@ describe('fingertip recognition — correct vs. wrong / near', () => {
   });
 });
 
-describe('fingertip recognition — face targets and fairness', () => {
+describe('fingertip recognition: face targets and fairness', () => {
   it('confirms a touch on a face target using precise face points', () => {
     const face = Array.from({ length: 478 }, () => ({ x: 0.95, y: 0.95 }));
     face[1] = { x: 0.50, y: 0.25 };
