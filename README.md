@@ -150,3 +150,11 @@ skip levels or force game states.
   Parts that aren't in frame are skipped.
 - Needs a modern browser with Service Worker, WASM, WebGL, and camera support.
   iOS Safari may need permissions enabled manually.
+
+## Credits
+
+- Music: "Bassa Island Game Loop" Kevin MacLeod (incompetech.com). Licensed under Creative Commons: By Attribution 4.0 License, http://creativecommons.org/licenses/by/4.0/
+- Sound effects `error`, `success`, `fireworks` and `wellDone`: "GUI Sound Effects" by Lokif (OpenGameArt), CC0 1.0. `click.mp3` comes from an open-source sound library according to the author; its exact source and licence are pending recovery.
+- MediaPipe model files: Google, Apache License 2.0 ([`LICENSE-APACHE-2.0.txt`](LICENSE-APACHE-2.0.txt)).
+
+Details: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
